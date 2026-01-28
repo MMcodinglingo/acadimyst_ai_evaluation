@@ -12,7 +12,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "aws-sdk": "^2.1693.0",
     "axios": "^1.13.4",
+    "cheerio": "^1.2.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "ejs": "^4.0.1",
@@ -23,12 +26,13 @@
     "mongoose": "^9.1.5",
     "morgan": "^1.10.1",
     "openai": "^6.16.0",
+    "puppeteer": "^24.36.1",
     "winston": "^3.19.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-security": "^3.0.1"
+    "eslint-plugin-security": "^3.0.1",
+    "nodemon": "^3.1.11"
   }
 }

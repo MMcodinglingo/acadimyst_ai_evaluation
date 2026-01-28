@@ -1,15 +1,548 @@
-<!DOCTYPE html>
-<html>
-<head>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IELTS Speaking Report</title>
-</head>
-<body>
-    <h1>IELTS Speaking Report</h1>
-    <p>Student: <%= studentName %></p>
-    <p>Overall Band: <%= scores.overall_band %></p>
-    <div>
-        <h2>Summary</h2>
-        <p><%= summary %></p>
+
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --border: #e5e7eb;
+        --text: #111827;
+        --muted: #6b7280;
+
+        --red: #dc2626;
+        --redBg: #fee2e2;
+
+        --green: #16a34a;
+        --greenBg: #dcfce7;
+
+        --purple: #7c3aed;
+        --purpleBg: #ede9fe;
+
+        --blue: #2563eb;
+        --blueBg: #dbeafe;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        margin: 0;
+        padding: 20px;
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
+
+      .report {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: white;
+      }
+
+      /* ================= HEADER ================= */
+
+      .report .header {
+        background: #ffffff;
+        color: var(--text);
+        padding: 22px 22px 18px;
+        position: relative;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .report .header::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0L0 0 0 10" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        opacity: 0.25;
+        pointer-events: none;
+      }
+
+      .report .header-content {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .report .header .logo {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: block;
+        background: #fff;
+        border: 1px solid rgba(17, 24, 39, 0.15);
+        transform: scale(1.2);
+        transform-origin: center;
+      }
+
+      .report .header-center {
+        text-align: center;
+        flex: 1;
+      }
+
+      .report .header-center h1 {
+        margin: 0 0 6px;
+        font-size: 2.1em;
+        line-height: 1.15;
+        color: #9d2235;
+      }
+
+      .report .generated-date {
+        font-size: 0.95em;
+        opacity: 0.8;
+        margin-top: 8px;
+        color: #374151;
+      }
+
+      /* student info bar */
+      .report .student-info {
+        position: relative;
+        margin-top: 16px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        background: #9d2235;
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .report .info-label {
+        font-size: 0.78em;
+        color: rgba(255, 255, 255, 0.78);
+        text-transform: uppercase;
+      }
+
+      .report .info-value {
+        font-size: 1.05em;
+        font-weight: 800;
+        color: #ffffff;
+      }
+
+      /* ================= CONTENT ================= */
+
+      .section {
+        padding: 16px 18px;
+      }
+
+      .section h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+
+      .divider {
+        height: 1px;
+        background: var(--border);
+        margin: 16px 0;
+      }
+
+      .content {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        line-height: 1.65;
+        font-size: 14px;
+      }
+
+      .cta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: linear-gradient(90deg, #eff6ff, #faf5ff);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px 16px;
+      }
+
+      .cta strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .cta p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .cta a {
+        background: #9d2235;
+        color: white;
+        text-decoration: none;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      /* ================= CARDS ================= */
+
+      .assessment-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .assessment-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 14px 14px;
+        box-shadow: 0 4px 16px rgba(17, 24, 39, 0.06);
+        min-height: 120px;
+      }
+
+      .assessment-card.full-width {
+        grid-column: 1 / -1;
+      }
+
+      .card-title {
+        font-weight: 900;
+        color: #9d2235;
+        margin: 0 0 10px;
+        font-size: 14px;
+      }
+
+      /* ================= SCORE TABLE ================= */
+
+      .score-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: #fff;
+        box-shadow: 0 10px 28px rgba(17, 24, 39, 0.06);
+      }
+
+      .score-table th,
+      .score-table td {
+        padding: 14px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        font-size: 14px;
+      }
+
+      .score-table td:last-child,
+      .score-table th:last-child {
+        text-align: right;
+      }
+
+      .score-table th {
+        background: linear-gradient(180deg, #ffffff, #f9fafb);
+        font-weight: 900;
+        color: #111827;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+
+      .score-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 54px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-weight: 900;
+        border: 1px solid rgba(157, 34, 53, 0.25);
+        background: rgba(157, 34, 53, 0.1);
+        color: #9d2235;
+      }
+
+      .score-table tbody tr:nth-child(odd) td {
+        background: #fcfcfd;
+      }
+
+      .score-table tbody tr:hover td {
+        background: #fff5f7;
+      }
+
+      .score-pill.good {
+        border-color: rgba(22, 163, 74, 0.25);
+        background: rgba(22, 163, 74, 0.1);
+        color: #166534;
+      }
+
+      /* ================= RESULT BLOCK ================= */
+
+      .report .result-wrap {
+        padding: 0;
+      }
+
+      .report .final-result {
+        background: #9d2235;
+        color: white;
+        padding: 18px 16px;
+        border-radius: 12px;
+        text-align: center;
+        margin: 18px;
+      }
+
+      .report .final-result.pass {
+        background: linear-gradient(135deg, #27ae60, #229954);
+      }
+
+      .report .grade {
+        font-size: 2.6em;
+        font-weight: 900;
+        margin: 8px 0 6px;
+      }
+
+      .band-legend {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin: 0 18px 18px;
+        padding: 14px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+      }
+
+      .band-chip {
+        text-align: center;
+        padding: 14px 10px;
+        font-weight: 900;
+        border-radius: 12px;
+        color: #ffffff;
+        background: #9d2235;
+        opacity: 0.45;
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .band-chip.active {
+        opacity: 1;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(157, 34, 53, 0.25);
+      }
+
+      @media (max-width: 980px) {
+        .band-legend {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      .report-footer {
+        background: #9d2235;
+        color: #ffffff;
+        padding: 16px 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-weight: 700;
+      }
+
+      .report-footer small {
+        font-weight: 600;
+        opacity: 0.92;
+      }
+
+      @media (max-width: 980px) {
+        body {
+          padding: 12px;
+        }
+        .report .header .logo {
+          width: 70px;
+          height: 70px;
+        }
+        .assessment-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="report" id="reportRoot">
+        <!-- HEADER -->
+        <div class="header">
+          <div class="header-content">
+            <a
+              href="https://mmeinstitute.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img src="https://d2mnxjaa9h61wj.cloudfront.net/MM.png" class="logo left-logo" id="logoLeft" />
+            </a>
+
+            <div class="header-center">
+              <h1 id="reportTitle">Speaking Assessment Report</h1>
+              <p class="generated-date">
+                Date: <span id="generatedOnHeader"><%= generatedDate %></span>
+              </p>
+            </div>
+
+            <a
+              href="https://acadimyst.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img src="https://d2mnxjaa9h61wj.cloudfront.net/6.png" alt="Right Logo" class="logo" id="logoRight" />
+            </a>
+          </div>
+
+          <div class="student-info">
+            <div>
+              <div class="info-label">Student Name</div>
+              <div class="info-value" id="studentName"><%= studentName || '—' %></div>
+            </div>
+            <div>
+              <div class="info-label">Module</div>
+              <div class="info-value" id="moduleName"><%= moduleName || 'IELTS Speaking' %></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= SCORES (TOP TABLE) ================= -->
+        <div class="section">
+          <h3>Scores</h3>
+          <div id="scoresTableWrap">
+            <table class="score-table">
+              <thead>
+                <tr>
+                  <th>Criteria</th>
+                  <th style="width:160px;">Band</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>🗣️ Fluency & Coherence</td>
+                  <td>
+                    <span class="score-pill <%= (scores && scores.fluency_coherence >= 7) ? 'good' : '' %>">
+                      <%= (scores && scores.fluency_coherence) || '—' %>
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>📚 Lexical Resource</td>
+                  <td>
+                    <span class="score-pill <%= (scores && scores.lexical_resource >= 7) ? 'good' : '' %>">
+                      <%= (scores && scores.lexical_resource) || '—' %>
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>🧠 Grammatical Range & Accuracy</td>
+                  <td>
+                    <span class="score-pill <%= (scores && scores.grammatical_range_accuracy >= 7) ? 'good' : '' %>">
+                      <%= (scores && scores.grammatical_range_accuracy) || '—' %>
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>🎧 Pronunciation</td>
+                  <td>
+                    <span class="score-pill <%= (scores && scores.pronunciation >= 7) ? 'good' : '' %>">
+                      <%= (scores && scores.pronunciation) || '—' %>
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>🏁 Overall Band</td>
+                  <td>
+                    <span class="score-pill <%= (scores && scores.overall_band >= 7) ? 'good' : '' %>">
+                      <%= (scores && scores.overall_band) || '—' %>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ================= NEW REPORT (4 CARDS) ================= -->
+        <div class="section">
+          <div class="assessment-grid" id="reportCards">
+            <div class="assessment-card full-width">
+              <div class="card-title">Summary</div>
+              <div class="content"><%= summary || '—' %></div>
+            </div>
+            <div class="assessment-card full-width">
+              <div class="card-title">Strengths</div>
+              <div class="content"><%= strengths || '—' %></div>
+            </div>
+            <div class="assessment-card full-width">
+              <div class="card-title">Areas of Improvement</div>
+              <div class="content"><%= areas_of_improvement || '—' %></div>
+            </div>
+            <div class="assessment-card full-width">
+              <div class="card-title">Actionable Feedback</div>
+              <div class="content"><%= actionable_feedback || '—' %></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ================= RESULT CARD ================= -->
+        <div class="result-wrap">
+          <div class="final-result <%= (scores && scores.overall_band >= 7) ? 'pass' : '' %>" id="finalResultBox">
+            <h3>ASSESSMENT RESULT</h3>
+            <div class="grade" id="finalGrade"><%= (scores && scores.overall_band) || '—' %></div>
+            <p><strong id="finalTotal">OVERALL BAND: <%= (scores && scores.overall_band) || '—' %></strong></p>
+          </div>
+
+          <div class="band-legend" id="bandLegend">
+            <% const bands = [4, 5, 6, 7, 8, 9]; %>
+            <% const activeBand = (scores && scores.overall_band) ? Math.round(scores.overall_band) : null; %>
+            <% bands.forEach(function(b) { %>
+              <div class="band-chip <%= (activeBand === b) ? 'active' : '' %>">
+                Band <%= b %>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- CTA -->
+        <div class="section">
+          <div class="cta">
+            <div>
+              <strong>Book 1:1 Session for Improvement</strong>
+              <p>
+                Get personalised feedback and a clear improvement plan for your
+                next attempt.
+              </p>
+            </div>
+            <a
+              href="https://mmeinstitute.com/book-1-1-session"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Book Now</a
+            >
+          </div>
+        </div>
+
+        <div class="report-footer" id="reportFooter">
+          <small>MM Coding and M&M Institute</small>
+        </div>
+      </div>
     </div>
-</body>
+
+  </body>
 </html>

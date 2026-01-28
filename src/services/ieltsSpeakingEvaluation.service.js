@@ -1,49 +1,41 @@
-const mongoose = require('mongoose');
-const winston = require('../config/logger');
+const winston = require('../config/logger.js');
 const { OpenAI } = require('openai');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const ejs = require('ejs');
-const config = require('../config/config');
+const {
+    loadToFile,
+    partLabelFromNumber,
+    taskKey,
+    forceZeroScoresObj,
+    safeJson,
+    clampBand,
+    computeOverallFromTasks,
+    buildMismatchDetail,
+    hasMismatchAlready,
+} = require('../utils/globalHelper');
+const htmlToPdf = require('../utils/htmlToPdf.js');
 
-// MOCK DEPENDENCIES TO MAKE THE CODE RUN
-const Models = {
-    IELTSSpeakingPart: mongoose.model('ietlsSpeakingPart', new mongoose.Schema({ speakingTestId: String, partNumber: Number, questions: [] })),
-    StudentSpeakingAnswer: require('../models/studentSpeakingAnswer.model'),
-    StudentCourses: mongoose.model('course'), // Assumes already registered or will throw
-    StudentTestAttempt: mongoose.model('studentTestAttempt'),
-    MockTest: mongoose.model('mockTest', new mongoose.Schema({ testType: String })),
-    StudentDashboardStats: mongoose.model('studentDashboardStats', new mongoose.Schema({ studentId: String, mockTestId: String, dateKey: String })),
-};
-
-
-
-
-async function handleIeltsEvaluation(studentSpeakingAnswer, student, speakingAudios, isAiBased, req) {
+async function handleIeltsSpeakingEvaluation(studentSpeakingAnswer, speakingParts, speakingAudios, isAiBased, req) {
     try {
         if (!isAiBased) return;
 
         winston.info('Starting enhanced IELTS speaking evaluation with dual transcription and relevance checking...');
 
         // ============= INITIALIZE OPENAI CLIENT =============
-        if (!config.OPENAI_API_KEY) {
+        if (!process.env.OPENAI_API_KEY) {
             winston.error('OPENAI_API_KEY is missing in environment variables');
             return;
         }
 
-        const client = new OpenAI({ apiKey: config.OPENAI_API_KEY });
+        const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const toFile = await loadToFile();
         const sttModel = 'gpt-4o-transcribe';
 
         // ============= PREP CONTAINERS =============
         const qaPairs = [];
         const questionMetaById = {}; // questionId -> { speakingPartId, subQuestionNumber }
-
-        // ============= FETCH ALL SPEAKING PARTS FOR THIS TEST =============
-        const speakingParts = await Models.IELTSSpeakingPart.find({
-            speakingTestId: studentSpeakingAnswer?.speakingTestId,
-        });
 
         if (!speakingParts || speakingParts.length === 0) {
             winston.error('No IELTS speaking parts found for this test.');
@@ -57,9 +49,6 @@ async function handleIeltsEvaluation(studentSpeakingAnswer, student, speakingAud
             partById[String(p._id)] = p;
             partByNumber[p.partNumber] = p;
         });
-
-        // ============= DOWNLOAD + DUAL TRANSCRIBE EACH AUDIO =============
-        winston.info(`Processing ${speakingAudios.length} audio files with dual transcription...`);
 
         /**
          * Transcribe one audio with specific settings
@@ -84,8 +73,10 @@ async function handleIeltsEvaluation(studentSpeakingAnswer, student, speakingAud
             return (t?.text || '').trim();
         }
 
-        for (let i = 0; i < speakingAudios.length; i++) {
-            const audio = speakingAudios[i];
+        /**
+         * Process a single audio file: Download -> Transcribe (Clean + Verbatim in parallel)
+         */
+        const processSingleAudio = async (audio, i) => {
             const audioUrl = audio.audioUrl;
             const localPath = audio.key;
 
@@ -101,28 +92,31 @@ async function handleIeltsEvaluation(studentSpeakingAnswer, student, speakingAud
                     mimetype: 'audio/mpeg',
                 };
 
-                // Generate BOTH clean and verbatim transcripts
-                winston.info(`Transcribing audio ${i + 1} (clean)...`);
-                const cleanText = await transcribeOneAudio({
-                    toFile,
-                    file,
-                    model: sttModel,
-                    verbatim: false,
-                });
+                // Run both transcriptions in parallel
+                winston.info(`Starting parallel transcriptions for audio ${i + 1}...`);
 
-                winston.info(`Transcribing audio ${i + 1} (verbatim)...`);
-                const verbatimText = await transcribeOneAudio({
-                    toFile,
-                    file,
-                    model: sttModel,
-                    verbatim: true,
-                });
+                const [cleanText, verbatimText] = await Promise.all([
+                    transcribeOneAudio({
+                        toFile,
+                        file,
+                        model: sttModel,
+                        verbatim: false,
+                    }),
+                    transcribeOneAudio({
+                        toFile,
+                        file,
+                        model: sttModel,
+                        verbatim: true,
+                    }),
+                ]);
+
+                winston.info(`Transcriptions complete for audio ${i + 1}`);
 
                 const partDoc = partById[String(audio.speakingPartId)];
 
                 if (!partDoc) {
                     winston.error(`IELTS Speaking part not found for speakingPartId ${audio.speakingPartId}`);
-                    continue;
+                    return null;
                 }
 
                 // Find the question text from embedded questions array
@@ -144,7 +138,13 @@ async function handleIeltsEvaluation(studentSpeakingAnswer, student, speakingAud
 
                 const partNumber = partDoc.partNumber;
 
-                qaPairs.push({
+                // Side effect: Update metadata map
+                questionMetaById[String(audio.questionId)] = {
+                    speakingPartId: audio.speakingPartId,
+                    subQuestionNumber: audio.subQuestionNumber || null,
+                };
+
+                return {
                     partNumber: partNumber,
                     partLabel: partLabelFromNumber(partNumber),
                     order: order,
@@ -158,16 +158,22 @@ async function handleIeltsEvaluation(studentSpeakingAnswer, student, speakingAud
                     questionText: questionText,
                     answerTranscript_clean: cleanText,
                     answerTranscript_verbatim: verbatimText,
-                });
-
-                questionMetaById[String(audio.questionId)] = {
-                    speakingPartId: audio.speakingPartId,
-                    subQuestionNumber: audio.subQuestionNumber || null,
                 };
             } catch (innerErr) {
-                winston.error('Error while downloading/transcribing IELTS speaking audio:', innerErr);
+                winston.error(`Error while processing audio ${i + 1}:`, innerErr);
+                return null;
             }
-        }
+        };
+
+        // Execute all audio processing in parallel
+        const processedResults = await Promise.all(speakingAudios.map((audio, i) => processSingleAudio(audio, i)));
+
+        // Filter out failures and add to qaPairs
+        processedResults.forEach((result) => {
+            if (result) {
+                qaPairs.push(result);
+            }
+        });
 
         // Ignore warm-up (part 1 order 0) for scoring
         const qaPairsForScoring = qaPairs.filter((q) => !(q.partNumber === 1 && q.order === 0));
@@ -798,7 +804,6 @@ Note: One or more answers were off-topic for their questions, which reduced the 
 
         // ============= GENERATE PDF & UPDATE StudentSpeakingAnswer =============
         winston.info('Converting images to base64 for IELTS speaking report...');
-        const images = await getIELTSSpeakingImages();
 
         const generatedDate = new Date().toLocaleDateString('en-GB', {
             day: '2-digit',
@@ -821,8 +826,6 @@ Note: One or more answers were off-topic for their questions, which reduced the 
             strengths: report.strengths || '—',
             areas_of_improvement: report.areas_of_improvement || '—',
             actionable_feedback: report.actionable_feedback || '—',
-            logoLeftBase64: images.logoLeft,
-            logoRightBase64: images.logoRight,
         };
 
         winston.info('Rendering EJS template for IELTS speaking report...');
@@ -864,86 +867,15 @@ ${report.areas_of_improvement || '—'}
 ${report.actionable_feedback || '—'}
 `.trim();
 
-        winston.info('Updating student speaking answer in database...');
-        const updateData = {
-            pdfUrl: { pdfUrl: pdfResp.s3Url, key: pdfResp.key },
-            partWiseScores,
-            avgBand: avgBandStr,
-            checkingStatus: 'checked',
-            scoreHistory: [
-                {
-                    avgGrade: avgBandStr,
-                    evaluatedAt: new Date(),
-                    evaluationType: 'ai',
-                    partWiseScores,
-                },
-            ],
-            // Save both plain and HTML feedback
-            aiFeedback: plainFeedback,
-            aiFeedBackHtml: speakingHtml,
-            accessorFeedBackHtml: speakingHtml,
-            // Store complete AI evaluation report (new field - flexible schema)
-            aiEvaluationReport: {
-                task_relevance: report.task_relevance,
-                scores: report.scores,
-                summary: report.summary,
-                strengths: report.strengths,
-                areas_of_improvement: report.areas_of_improvement,
-                actionable_feedback: report.actionable_feedback,
-                tokenUsage: usage,
-                generatedAt: new Date(),
-            },
+        return {
+            pdfResp,
+            plainFeedback,
         };
-
-        await Models.StudentSpeakingAnswer.findByIdAndUpdate(studentSpeakingAnswer._id, {
-            $set: updateData,
-        });
-
-        // ============= UPDATE DASHBOARD STATS & TEST ATTEMPT =============
-        winston.info('Updating dashboard stats...');
-        let attemptId = await Models.StudentTestAttempt.findById(studentSpeakingAnswer?.studentAttemptId, 'isPracticeMode');
-
-        const todayDateKey = new Date().toISOString().split('T')[0];
-
-        let mockTest = await Models.MockTest.findById(studentSpeakingAnswer.mockTestId, 'testType');
-
-        const speakingPercentage = Math.round((parseFloat(avgBandStr) / 9) * 100);
-
-        await Models.StudentDashboardStats.updateOne(
-            {
-                studentId: studentSpeakingAnswer.studentId,
-                mockTestId: studentSpeakingAnswer.mockTestId,
-                isPracticeMode: attemptId.isPracticeMode,
-                dateKey: todayDateKey,
-            },
-            {
-                $set: {
-                    courseId: studentSpeakingAnswer.courseId,
-                    testType: mockTest.testType,
-                    'speaking.band': avgBandStr,
-                    'speaking.score': speakingPercentage,
-                    'speaking.percentage': speakingPercentage,
-                    'speaking.attemptAt': new Date(),
-                    'speaking.isEvaluated': true,
-                    'speaking.testAttemptId': attemptId._id,
-                    lastUpdatedAt: new Date(),
-                    isPracticeMode: attemptId.isPracticeMode,
-                    testAttemptId: attemptId._id,
-                },
-                $setOnInsert: {
-                    dateKey: todayDateKey,
-                    createdAt: new Date(),
-                },
-            },
-            { upsert: true }
-        );
-
-        winston.info('IELTS speaking evaluation completed successfully!');
     } catch (err) {
         winston.error('Error in IELTS speaking evaluation:', err);
     }
 }
 
 module.exports = {
-  handleIeltsEvaluation,
+    handleIeltsSpeakingEvaluation,
 };

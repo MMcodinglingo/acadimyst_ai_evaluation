@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>OET Report</title>
+
+        <style>
+            :root {
+                --bg: #f8fafc;
+                --border: #e5e7eb;
+                --text: #111827;
+                --muted: #6b7280;
+
+                --red: #dc2626;
+                --redBg: #fee2e2;
+
+                --green: #16a34a;
+                --greenBg: #dcfce7;
+
+                --purple: #7c3aed;
+                --purpleBg: #ede9fe;
+
+                --blue: #2563eb;
+                --blueBg: #dbeafe;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                background: var(--bg);
+                margin: 0;
+                padding: 20px;
+                color: var(--text);
+            }
+
+            .container {
+                max-width: 1180px;
+                margin: 0 auto;
+            }
+
+            .report {
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                overflow: hidden;
+                background: white;
+            }
+
+            /* ================= HEADER (UPDATED) ================= */
+
+            .report .header {
+                background: #ffffff;
+                color: var(--text);
+                padding: 22px 22px 18px;
+                position: relative;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .report .header::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0L0 0 0 10" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+                opacity: 0.25;
+                pointer-events: none;
+            }
+
+            .report .header-content {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 18px;
+            }
+
+            .report .header .logo {
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                object-fit: cover;
+                display: block;
+                background: #fff;
+                border: 1px solid rgba(17, 24, 39, 0.15);
+                transform: scale(1.2);
+                transform-origin: center;
+            }
+
+            .report .header-center {
+                text-align: center;
+                flex: 1;
+            }
+
+            .report .header-center h1 {
+                margin: 0 0 6px;
+                font-size: 2.1em;
+                line-height: 1.15;
+                color: #9d2235;
+            }
+
+            .report .generated-date {
+                font-size: 0.95em;
+                opacity: 0.8;
+                margin-top: 8px;
+                color: #374151;
+            }
+
+            .report .student-info {
+                position: relative;
+                margin-top: 16px;
+                padding: 14px 16px;
+                border-radius: 12px;
+                display: flex;
+                gap: 18px;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                background: #9d2235;
+                color: #ffffff;
+                border: 1px solid rgba(255, 255, 255, 0.18);
+            }
+
+            .report .info-label {
+                font-size: 0.78em;
+                color: rgba(255, 255, 255, 0.78);
+                text-transform: uppercase;
+            }
+
+            .report .info-value {
+                font-size: 1.05em;
+                font-weight: 800;
+                color: #ffffff;
+            }
+
+            /* ================= RESULT BLOCK ================= */
+
+            .report .result-wrap {
+                padding: 0;
+            }
+
+            .report .final-result {
+                background: #9d2235;
+                color: white;
+                padding: 18px 16px;
+                border-radius: 12px;
+                text-align: center;
+                margin: 18px;
+            }
+
+            .report .final-result.pass {
+                background: linear-gradient(135deg, #27ae60, #229954);
+            }
+
+            .report .grade {
+                font-size: 2.6em;
+                font-weight: 900;
+                margin: 8px 0 6px;
+            }
+
+            .report .grade-legend {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+                margin: 0 18px 18px;
+                padding: 14px;
+                background: #f8f9fa;
+                border-radius: 12px;
+                border: 1px solid var(--border);
+            }
+
+            .report .grade-item {
+                text-align: center;
+                padding: 10px;
+                font-weight: 800;
+                border-radius: 10px;
+                color: #ffffff;
+                background: #9d2235;
+            }
+
+            /* ================= LEGEND + CONTENT ================= */
+
+            .legend-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 12px 18px;
+                border-bottom: 1px solid var(--border);
+                background: #ffffff;
+                flex-wrap: wrap;
+            }
+
+            .legend-left {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+
+            .chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                border: 1px solid var(--border);
+                padding: 6px 10px;
+                border-radius: 999px;
+                font-size: 12px;
+                color: #111827;
+                background: #fff;
+            }
+
+            .dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 999px;
+            }
+
+            .dot-red {
+                background: var(--red);
+            }
+            .dot-green {
+                background: var(--green);
+            }
+            .dot-purple {
+                background: var(--purple);
+            }
+            .dot-blue {
+                background: var(--blue);
+            }
+            .dot-gray {
+                background: #9ca3af;
+            }
+
+            .section {
+                padding: 16px 18px;
+            }
+
+            .section h3 {
+                margin: 0 0 10px;
+                font-size: 15px;
+            }
+
+            .divider {
+                height: 1px;
+                background: var(--border);
+                margin: 16px 0;
+            }
+
+            .content {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                line-height: 1.65;
+                font-size: 14px;
+            }
+
+            .bold {
+                font-weight: 800;
+            }
+
+            .strike-red {
+                color: #9d2235;
+                text-decoration: line-through;
+                text-decoration-thickness: 2px;
+                background: var(--redBg);
+                padding: 1px 4px;
+                border-radius: 4px;
+            }
+
+            .correction-green {
+                color: var(--green);
+                font-weight: 800;
+                background: var(--greenBg);
+                padding: 1px 4px;
+                border-radius: 4px;
+            }
+
+            .assessor-purple {
+                color: var(--purple);
+                font-style: italic;
+                background: var(--purpleBg);
+                padding: 1px 4px;
+                border-radius: 4px;
+            }
+
+            .missing-blue {
+                color: var(--blue);
+                font-weight: 800;
+                background: var(--blueBg);
+                padding: 1px 6px;
+                border-radius: 4px;
+                border-left: 3px solid var(--blue);
+            }
+
+            .irrelevant-gray {
+                color: #6b7280;
+                text-decoration: line-through;
+                text-decoration-color: #9ca3af;
+                text-decoration-thickness: 2px;
+                background: #f3f4f6;
+                padding: 1px 4px;
+                border-radius: 4px;
+            }
+
+            .cta {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                background: linear-gradient(90deg, #eff6ff, #faf5ff);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 14px 16px;
+            }
+
+            .cta strong {
+                display: block;
+                margin-bottom: 4px;
+            }
+
+            .cta p {
+                margin: 0;
+                color: var(--muted);
+                font-size: 12px;
+            }
+
+            .cta a {
+                background: #9d2235;
+                color: white;
+                text-decoration: none;
+                padding: 10px 14px;
+                border-radius: 12px;
+                font-weight: 800;
+                white-space: nowrap;
+            }
+
+            /* ================= ASSESSMENT GRID ================= */
+
+            .assessment-grid {
+                display: block; /* no grid */
+            }
+
+            .assessment-card {
+                width: 100%;
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                background: #ffffff;
+                padding: 14px 14px;
+                box-shadow: 0 4px 16px rgba(17, 24, 39, 0.06);
+                margin-bottom: 14px; /* spacing between sections */
+            }
+
+            .card-title {
+                font-weight: 900;
+                color: #9d2235;
+                margin: 0 0 10px;
+                font-size: 14px;
+            }
+
+            /* ================= FOOTER ================= */
+
+            .report-footer {
+                background: #9d2235;
+                color: #ffffff;
+                padding: 16px 18px;
+                border-top: 1px solid rgba(255, 255, 255, 0.18);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-weight: 700;
+            }
+
+            .report-footer small {
+                font-weight: 600;
+                opacity: 0.92;
+            }
+
+            @media (max-width: 980px) {
+                body {
+                    padding: 12px;
+                }
+                .report .header .logo {
+                    width: 70px;
+                    height: 70px;
+                }
+                .assessment-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <div class="report" id="reportRoot">
+                <!-- HEADER -->
+                <div class="header">
+                    <div class="header-content">
+                        <a href="https://mmeinstitute.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/MM.png" alt="MM Logo" class="logo left-logo" id="logoLeft" />
+                        </a>
+
+                        <div class="header-center">
+                            <h1 id="reportTitle">Writing Assessment Report</h1>
+                            <p class="generated-date">Date: <span id="generatedOnHeader"><%= generatedDate %></span></p>
+                        </div>
+
+                        <a href="https://acadimyst.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/6.png" alt="OET Logo" class="logo" id="logoRight" />
+                        </a>
+                    </div>
+
+                    <div class="student-info">
+                        <div>
+                            <div class="info-label">Student Name</div>
+                            <div class="info-value" id="studentName"><%= studentName || 'Student' %></div>
+                        </div>
+                        <div>
+                            <div class="info-label">Module</div>
+                            <div class="info-value" id="moduleName"><%= moduleName || 'Unknown Module' %></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legend row -->
+                <div class="legend-row">
+                    <div class="legend-left">
+                        <span class="chip"><span class="dot dot-red"></span>Error</span>
+                        <span class="chip"><span class="dot dot-green"></span>Correction</span>
+                        <span class="chip"><span class="dot dot-purple"></span>Assessor comment</span>
+                        <span class="chip"><span class="dot dot-blue"></span>Missing info</span>
+                        <span class="chip"><span class="dot dot-gray"></span>Irrelevant</span>
+                    </div>
+                    <div class="legend-right"></div>
+                </div>
+
+                <!-- Letter -->
+                <div class="section">
+                    <h3>Letter</h3>
+                    <div id="letter" class="content"><%- letterHtml %></div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- RESULT -->
+                <div class="result-wrap">
+                    <% const resultClass = (meta.result || "").toLowerCase() === "pass" ? "pass" : ""; %>
+                    <div class="final-result <%= resultClass %>" id="finalResultBox">
+                        <h3>ASSESSMENT RESULT</h3>
+                        <div class="grade" id="finalGrade"><%= meta.grade || 'N/A' %></div>
+                        <p><strong id="finalTotal">TOTAL SCORE: <%= meta.totalScore != null ? meta.totalScore : '—' %>/<%= meta.totalOutOf != null ? meta.totalOutOf : '500' %></strong></p>
+                    </div>
+
+                    <div class="grade-legend">
+                        <div class="grade-item grade-a">A: 450–500</div>
+                        <div class="grade-item grade-b">B: 350–449</div>
+                        <div class="grade-item grade-c-plus">C+: 300–349</div>
+                        <div class="grade-item grade-c">C: 200–299</div>
+                        <div class="grade-item grade-d">D: 100–199</div>
+                        <div class="grade-item grade-e">E: 0–99</div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Assessment -->
+                <div class="section">
+                    <h3>Complete Assessment Report</h3>
+                    <div class="assessment-grid" id="assessmentCards">
+                        <% if (assessmentCards && assessmentCards.length > 0) { %> <% assessmentCards.forEach(function(card) { %>
+                        <div class="assessment-card <%= card.fullWidth ? 'full-width' : '' %>">
+                            <div class="card-title"><%= card.title %></div>
+                            <div class="content"><%- card.htmlBody %></div>
+                        </div>
+                        <% }); %> <% } else { %>
+                        <div class="assessment-card">
+                            <div class="card-title">Assessment</div>
+                            <div class="content">No detailed assessment available.</div>
+                        </div>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Footer -->
+                <div class="report-footer" id="reportFooter">
+                    <small>MM Coding and M&amp;M Institute</small>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

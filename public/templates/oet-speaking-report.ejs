@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>OET Report</title>
+
+        <style>
+            :root {
+                --bg: #f8fafc;
+                --border: #e5e7eb;
+                --text: #111827;
+                --muted: #6b7280;
+
+                --brand: #9d2235;
+                --brandDark: #7a1b2a;
+                --cardShadow: 0 10px 28px rgba(17, 24, 39, 0.08);
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                background: var(--bg);
+                margin: 0;
+                padding: 20px;
+                color: var(--text);
+            }
+
+            .container {
+                max-width: 1180px;
+                margin: 0 auto;
+            }
+
+            .report {
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                overflow: hidden;
+                background: white;
+            }
+            .cards-text {
+                margin-top: 10px;
+                display: grid;
+                gap: 6px;
+            }
+
+            .card-text {
+                background: rgba(157, 34, 53, 0.08);
+                border: 1px solid rgba(157, 34, 53, 0.18);
+                color: #111827;
+                border-radius: 10px;
+                padding: 8px 10px;
+                font-weight: 700;
+                font-size: 13px;
+            }
+
+            /* ================= HEADER (SAME) ================= */
+            .report .header {
+                background: #ffffff;
+                color: var(--text);
+                padding: 22px 22px 18px;
+                position: relative;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .report .header::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0L0 0 0 10" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+                opacity: 0.25;
+                pointer-events: none;
+            }
+
+            .report .header-content {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 18px;
+            }
+
+            .report .header .logo {
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                object-fit: cover;
+                display: block;
+                background: #fff;
+                border: 1px solid rgba(17, 24, 39, 0.15);
+                transform: scale(1.2);
+                transform-origin: center;
+            }
+
+            .report .header-center {
+                text-align: center;
+                flex: 1;
+            }
+
+            .report .header-center h1 {
+                margin: 0 0 6px;
+                font-size: 2.1em;
+                line-height: 1.15;
+                color: var(--brand);
+            }
+
+            .report .generated-date {
+                font-size: 0.95em;
+                opacity: 0.85;
+                margin-top: 8px;
+                color: #374151;
+            }
+
+            /* ================= NEW: RESULT + STRIPS ================= */
+
+            .after-header {
+                padding: 18px;
+                background: linear-gradient(180deg, rgba(248, 250, 252, 0.7), #ffffff);
+                border-bottom: 1px solid var(--border);
+            }
+
+            .result-card {
+                background: var(--brand);
+                color: #fff;
+                border-radius: 18px;
+                padding: 22px 18px;
+                text-align: center;
+                box-shadow: var(--cardShadow);
+            }
+
+            .result-card .title {
+                font-weight: 900;
+                letter-spacing: 0.4px;
+                font-size: 20px;
+                text-transform: uppercase;
+            }
+
+            .result-card .grade {
+                font-size: 66px;
+                font-weight: 950;
+                margin: 10px 0 6px;
+                line-height: 1;
+            }
+
+            .result-card .score {
+                font-size: 18px;
+                font-weight: 900;
+                letter-spacing: 0.3px;
+                opacity: 0.95;
+            }
+
+            .rubric-wrap {
+                margin-top: 12px;
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 12px;
+            }
+
+            .rubric-row {
+                display: grid;
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .rubric-pill {
+                background: var(--brand);
+                color: #fff;
+                border-radius: 12px;
+                padding: 14px 10px;
+                font-weight: 900;
+                text-align: center;
+                letter-spacing: 0.2px;
+                box-shadow: 0 8px 18px rgba(157, 34, 53, 0.18);
+                opacity: 0.75;
+                border: 1px solid rgba(255, 255, 255, 0.14);
+            }
+
+            .rubric-pill.active {
+                opacity: 1;
+                outline: 3px solid rgba(157, 34, 53, 0.18);
+            }
+
+            .info-strip {
+                margin-top: 14px;
+                background: var(--brand);
+                color: #fff;
+                border-radius: 14px;
+                padding: 14px 16px;
+                display: flex;
+                justify-content: space-between;
+                gap: 16px;
+                flex-wrap: wrap;
+                box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+            }
+
+            .strip-block .label {
+                font-size: 12px;
+                opacity: 0.85;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+
+            .strip-block .value {
+                font-size: 20px;
+                font-weight: 950;
+                margin-top: 4px;
+            }
+
+            /* ================= BODY: FORMATTED REPORT ================= */
+
+            .report-body {
+                padding: 18px;
+            }
+
+            .section {
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                background: #fff;
+                padding: 16px;
+                box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+                margin-bottom: 14px;
+            }
+
+            .section-title {
+                margin: 0 0 10px;
+                color: var(--brand);
+                font-size: 18px;
+                font-weight: 950;
+                letter-spacing: 0.2px;
+                text-transform: uppercase;
+            }
+
+            .section p {
+                margin: 10px 0;
+                line-height: 1.75;
+                color: var(--text);
+                font-size: 14px;
+            }
+
+            .section ol {
+                margin: 10px 0 0 18px;
+                padding: 0;
+            }
+
+            .section li {
+                margin: 8px 0;
+                line-height: 1.7;
+                font-size: 14px;
+            }
+
+            .muted {
+                color: var(--muted);
+                font-weight: 700;
+            }
+
+            /* inline bold inside text */
+            .section strong {
+                font-weight: 900;
+            }
+
+            /* ================= FOOTER (SAME) ================= */
+
+            .report-footer {
+                background: var(--brand);
+                color: #ffffff;
+                padding: 16px 18px;
+                border-top: 1px solid rgba(255, 255, 255, 0.18);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-weight: 700;
+            }
+
+            .report-footer small {
+                font-weight: 600;
+                opacity: 0.92;
+            }
+
+            @media (max-width: 980px) {
+                body {
+                    padding: 12px;
+                }
+                .report .header .logo {
+                    width: 70px;
+                    height: 70px;
+                    transform: scale(1.15);
+                }
+                .rubric-row {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+                .result-card .grade {
+                    font-size: 54px;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <!-- ================= REPORT 1 (Card 1) ================= -->
+            <div class="report" id="reportRoot_r1">
+                <div class="header">
+                    <div class="header-content">
+                        <a href="https://mmeinstitute.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/MM.png" alt="MM Logo" class="logo left-logo" id="logoLeft_r1" />
+                        </a>
+
+                        <div class="header-center">
+                            <h1 id="reportTitle_r1"><%= card1 ? card1.reportTitle : 'OET Report' %></h1>
+                            <p class="generated-date">Date: <span id="generatedOnHeader_r1"><%= card1 ? card1.generatedDate : generatedDate %></span></p>
+                            <% if (card2) { %>
+                            <div class="cards-text">
+                                <div class="card-text" id="cardText1_r1">Card 1:</div>
+                            </div>
+                            <% } %>
+                        </div>
+
+                        <a href="https://acadimyst.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/6.png" alt="OET Logo" class="logo" id="logoRight_r1" />
+                        </a>
+                    </div>
+
+                    <div class="info-strip">
+                        <div class="strip-block">
+                            <div class="label">Doctor Name</div>
+                            <div class="value" id="doctorName_r1"><%= card1 ? card1.doctorName : '—' %></div>
+                        </div>
+
+                        <div class="strip-block" style="margin-left: auto; text-align: right">
+                            <div class="label">Module</div>
+                            <div class="value" id="moduleName_r1"><%= card1 ? card1.moduleName : '—' %></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-body">
+                    <div id="sectionsRoot_r1"><%- card1 ? card1.sectionsHtml : '<div class="section"><p class="muted">No report data available.</p></div>' %></div>
+                </div>
+
+                <div class="result-segment-wrap">
+                    <div class="result-segment">
+                        <div class="result-card">
+                            <div class="title">ASSESSMENT RESULT</div>
+                            <div class="grade" id="gradeBig_r1"><%= card1 ? card1.grade : '—' %></div>
+                            <div class="score" id="totalScoreLine_r1"><%= card1 ? card1.totalScoreLine : 'TOTAL SCORE: —/500' %></div>
+                        </div>
+
+                        <div class="rubric-wrap">
+                            <div class="rubric-row" id="rubricRow_r1"><%- card1 ? card1.rubricHtml : '' %></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-footer" id="reportFooter_r1">
+                    <small>MM Coding and M&amp;M Institute</small>
+                </div>
+            </div>
+
+            <% if (card2) { %>
+            <!-- spacing between reports -->
+            <div style="height: 18px"></div>
+
+            <!-- ================= REPORT 2 (Card 2) ================= -->
+            <div class="report" id="reportRoot_r2">
+                <div class="header">
+                    <div class="header-content">
+                        <a href="https://mmeinstitute.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/MM.png" alt="MM Logo" class="logo left-logo" id="logoLeft_r2" />
+                        </a>
+
+                        <div class="header-center">
+                            <h1 id="reportTitle_r2"><%= card2.reportTitle %></h1>
+                            <p class="generated-date">Date: <span id="generatedOnHeader_r2"><%= card2.generatedDate %></span></p>
+                            <div class="cards-text">
+                                <div class="card-text" id="cardText2_r2">Card 2:</div>
+                            </div>
+                        </div>
+
+                        <a href="https://acadimyst.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/6.png" alt="OET Logo" class="logo" id="logoRight_r2" />
+                        </a>
+                    </div>
+
+                    <div class="info-strip">
+                        <div class="strip-block">
+                            <div class="label">Doctor Name</div>
+                            <div class="value" id="doctorName_r2"><%= card2.doctorName %></div>
+                        </div>
+
+                        <div class="strip-block" style="margin-left: auto; text-align: right">
+                            <div class="label">Module</div>
+                            <div class="value" id="moduleName_r2"><%= card2.moduleName %></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-body">
+                    <div id="sectionsRoot_r2"><%- card2.sectionsHtml %></div>
+                </div>
+
+                <div class="result-segment-wrap">
+                    <div class="result-segment">
+                        <div class="result-card">
+                            <div class="title">ASSESSMENT RESULT</div>
+                            <div class="grade" id="gradeBig_r2"><%= card2.grade %></div>
+                            <div class="score" id="totalScoreLine_r2"><%= card2.totalScoreLine %></div>
+                        </div>
+
+                        <div class="rubric-wrap">
+                            <div class="rubric-row" id="rubricRow_r2"><%- card2.rubricHtml %></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-footer" id="reportFooter_r2">
+                    <small>MM Coding and M&amp;M Institute</small>
+                </div>
+            </div>
+            <% } %>
+        </div>
+
+    </body>
+</html>
+

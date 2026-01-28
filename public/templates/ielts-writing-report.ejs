@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title><%= reportTitle %></title>
+
+        <style>
+            :root {
+                --bg: #f8fafc;
+                --border: #e5e7eb;
+                --text: #111827;
+                --muted: #6b7280;
+                --brand: #9d2235;
+                --brandDark: #7a1b2a;
+                --cardShadow: 0 10px 28px rgba(17, 24, 39, 0.08);
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                background: var(--bg);
+                margin: 0;
+                padding: 0;
+                color: var(--text);
+            }
+            .container {
+                width: 100%;
+                max-width: none;
+                margin: 0;
+                padding: 20px;
+            }
+            .report {
+                width: 100%;
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                overflow: visible;
+                background: white;
+            }
+
+            .header {
+                background: #fff;
+                color: var(--text);
+                padding: 22px 22px 18px;
+                position: relative;
+                border-bottom: 1px solid var(--border);
+            }
+            .header::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><pattern id='grid' width='10' height='10' patternUnits='userSpaceOnUse'><path d='M10 0L0 0 0 10' fill='none' stroke='rgba(0,0,0,0.06)' stroke-width='0.5'/></pattern></defs><rect width='100' height='100' fill='url(%23grid)'/></svg>");
+                opacity: 0.25;
+                pointer-events: none;
+            }
+
+            .header-content {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 18px;
+            }
+            .logo {
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                object-fit: cover;
+                display: block;
+                background: #fff;
+                border: 1px solid rgba(17, 24, 39, 0.15);
+                transform: none;
+                transform-origin: center;
+            }
+            .header-center {
+                text-align: center;
+                flex: 1;
+            }
+            .header-center h1 {
+                margin: 0 0 6px;
+                font-size: 2.1em;
+                line-height: 1.15;
+                color: var(--brand);
+            }
+            .generated-date {
+                font-size: 0.95em;
+                opacity: 0.85;
+                margin-top: 8px;
+                color: #374151;
+            }
+
+            .info-strip {
+                margin-top: 14px;
+                background: var(--brand);
+                color: #fff;
+                border-radius: 14px;
+                padding: 14px 16px;
+                display: flex;
+                justify-content: space-between;
+                gap: 16px;
+                flex-wrap: wrap;
+                box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+            }
+            .strip-block .label {
+                font-size: 12px;
+                opacity: 0.85;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+            .strip-block .value {
+                font-size: 20px;
+                font-weight: 950;
+                margin-top: 4px;
+            }
+
+            .report-body {
+                padding: 18px;
+            }
+            .section {
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                background: #fff;
+                padding: 16px;
+                box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+                margin-bottom: 14px;
+            }
+            .section-title {
+                margin: 0 0 10px;
+                color: var(--brand);
+                font-size: 18px;
+                font-weight: 950;
+                letter-spacing: 0.2px;
+                text-transform: uppercase;
+            }
+            .sub-title {
+                margin: 14px 0 8px;
+                font-size: 14px;
+                font-weight: 900;
+                color: #111827;
+                text-transform: uppercase;
+                letter-spacing: 0.2px;
+            }
+            .section p {
+                margin: 10px 0;
+                line-height: 1.75;
+                color: var(--text);
+                font-size: 14px;
+            }
+            .section ul,
+            .section ol {
+                margin: 10px 0 0 18px;
+                padding: 0;
+            }
+            .section li {
+                margin: 8px 0;
+                line-height: 1.7;
+                font-size: 14px;
+            }
+            .muted {
+                color: var(--muted);
+                font-weight: 700;
+            }
+            .section strong {
+                font-weight: 900;
+            }
+
+            .kv {
+                width: 100%;
+                border-collapse: collapse;
+                overflow: hidden;
+                border-radius: 12px;
+                border: 1px solid var(--border);
+                margin-top: 10px;
+            }
+            .kv th,
+            .kv td {
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--border);
+                font-size: 14px;
+            }
+            .kv th {
+                text-align: left;
+                background: rgba(157, 34, 53, 0.06);
+                color: #111827;
+                font-weight: 900;
+            }
+            .kv td {
+                color: #111827;
+            }
+
+            del {
+                color: #991b1b;
+                text-decoration-color: #991b1b;
+                font-weight: 700;
+            }
+            .corr strong {
+                color: #166534;
+                font-weight: 900;
+            }
+            .corr {
+                background: rgba(17, 24, 39, 0.02);
+                border: 1px dashed rgba(17, 24, 39, 0.18);
+                border-radius: 12px;
+                padding: 12px;
+                margin-top: 10px;
+            }
+            .corr .hint {
+                font-size: 12px;
+                color: var(--muted);
+                font-weight: 800;
+                margin-bottom: 8px;
+            }
+
+            .result-segment-wrap {
+                padding: 18px;
+                border-top: 1px solid var(--border);
+                background: linear-gradient(180deg, rgba(248, 250, 252, 0.7), #ffffff);
+            }
+            .result-card {
+                background: var(--brand);
+                color: #fff;
+                border-radius: 18px;
+                padding: 22px 18px;
+                text-align: center;
+                box-shadow: var(--cardShadow);
+            }
+            .result-card .title {
+                font-weight: 900;
+                letter-spacing: 0.4px;
+                font-size: 16px;
+                text-transform: uppercase;
+                opacity: 0.95;
+            }
+            .result-card .grade {
+                font-size: 66px;
+                font-weight: 950;
+                margin: 10px 0 6px;
+                line-height: 1;
+            }
+            .result-card .score {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: 0.2px;
+                opacity: 0.95;
+            }
+
+            .rubric-wrap {
+                margin-top: 12px;
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 12px;
+            }
+            .rubric-row {
+                display: grid;
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+                gap: 10px;
+            }
+            .rubric-pill {
+                background: var(--brand);
+                color: #fff;
+                border-radius: 12px;
+                padding: 14px 10px;
+                font-weight: 900;
+                text-align: center;
+                letter-spacing: 0.2px;
+                box-shadow: 0 8px 18px rgba(157, 34, 53, 0.18);
+                opacity: 0.75;
+                border: 1px solid rgba(255, 255, 255, 0.14);
+            }
+            .rubric-pill.active {
+                opacity: 1;
+                outline: 3px solid rgba(157, 34, 53, 0.18);
+            }
+
+            .report-footer {
+                background: var(--brand);
+                color: #fff;
+                padding: 16px 18px;
+                border-top: 1px solid rgba(255, 255, 255, 0.18);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-weight: 700;
+            }
+            .report-footer small {
+                font-weight: 600;
+                opacity: 0.92;
+            }
+
+            @media (max-width: 980px) {
+                .logo {
+                    width: 70px;
+                    height: 70px;
+                    transform: scale(1.15);
+                }
+                .rubric-row {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+                .result-card .grade {
+                    font-size: 54px;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <div class="report" id="reportRoot">
+                <div class="header">
+                    <div class="header-content">
+                        <a href="https://mmeinstitute.com" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/MM.png" alt="Logo" class="logo left-logo" id="logoLeft" />
+                        </a>
+
+                        <div class="header-center">
+                            <h1 id="reportTitle"><%= reportTitle %></h1>
+                            <p class="generated-date">Date: <span id="generatedOnHeader"><%= generatedDate %></span></p>
+                        </div>
+
+                        <a href="https://acadimyst.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="https://d2mnxjaa9h61wj.cloudfront.net/6.png" alt="Logo" class="logo" id="logoRight" />
+                        </a>
+                    </div>
+
+                    <div class="info-strip">
+                        <div class="strip-block">
+                            <div class="label">Candidate</div>
+                            <div class="value" id="candidateName"><%= studentName || '—' %></div>
+                        </div>
+
+                        <div class="strip-block" style="margin-left: auto; text-align: right">
+                            <div class="label">Module</div>
+                            <div class="value" id="moduleName"><%= moduleName || 'IELTS Writing' %></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-body"><%- sectionsHtml %></div>
+
+                <div class="result-segment-wrap">
+                    <div class="result-card">
+                        <div class="title" id="resultTitle"><%= resultTitle %></div>
+                        <div class="grade" id="bandBig"><%= bandBig %></div>
+                        <div class="score" id="bandLine"><%= bandLine %></div>
+                    </div>
+
+                    <div class="rubric-wrap">
+                        <div class="rubric-row" id="rubricRow"><%- rubricHtml %></div>
+                    </div>
+                </div>
+
+                <div class="report-footer" id="reportFooter">
+                    <small> MM Coding and M&M Institute</small>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

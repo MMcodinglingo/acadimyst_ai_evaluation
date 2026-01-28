@@ -4,6 +4,6 @@ const { mockAuthMiddleware } = require('../middlewares/mock');
 
 const router = express.Router();
 
-router.post('/ielts-evaluation', mockAuthMiddleware, ieltsEvaluationController.handleIeltsEvaluation);
+router.post('/ielts-evaluation', mockAuthMiddleware, ieltsEvaluationController.handleIeltsSpeakingEvaluation);
 
 module.exports = router;
