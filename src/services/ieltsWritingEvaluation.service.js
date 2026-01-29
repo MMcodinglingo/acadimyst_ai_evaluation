@@ -1,4 +1,5 @@
 const winston = require('../config/logger.js');
+const config = require('../config/config.js');
 const {
     task1ExtractPrompt,
     task2ExtractPrompt,
@@ -6,6 +7,7 @@ const {
     task1AssessPrompt,
     task2AssessPrompt,
     finalCombinedReportPrompt,
+    buildManualCombinedReport,
 } = require('../utils/ieltsWritingEvaluation.js');
 const globalLibrary = require('../utils/globalHelper.js');
 const htmlToPdf = require('../utils/htmlToPdf');
@@ -24,13 +26,12 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
             // Skip if no text was submitted
             if (!task.writingText) {
                 winston.info(`⏭️ Skipping Task ${taskNumber} - no text submitted`);
-                return { taskNumber, skipped: true };
+                return { taskNumber, taskIndex, skipped: true };
             }
 
-            winston.info(`🔍 Starting AI evaluation for IELTS Task ${taskNumber}...`);
+            winston.info(`🔍 Starting AI evaluation for IELTS Task ${taskNumber}`);
 
             // STEP 1: Extract question features
-            // This analyzes the question to identify what the student must address
             winston.info(`📋 Step 1: Extracting key features for Task ${taskNumber}...`);
 
             const extractPrompt =
@@ -54,16 +55,14 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
 
             if (!extractedFeatures) {
                 winston.error(`Failed to extract features for Task ${taskNumber}. Invalid JSON response.`);
-                throw new Error('AI returned invalid JSON for feature extraction');
+                throw new Error(`Invalid extraction JSON for Task ${taskNumber}`);
             }
-
-            winston.info(`✅ Extracted features for Task ${taskNumber}:`, {
+            winston.info(`Extracted features for Task ${taskNumber}:`, {
                 type: extractedFeatures.task_type || extractedFeatures.question_type,
                 featureCount: extractedFeatures.key_features?.length || extractedFeatures.must_address?.length || 0,
             });
 
             // STEP 2: Assess student response
-            // This evaluates the student's writing against the extracted features
             winston.info(`📝 Step 2: Assessing student response for Task ${taskNumber}...`);
 
             const assessPrompt =
@@ -82,17 +81,15 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
                 input: assessPrompt.input,
             });
 
-            // Parse assessment report
             const assessmentReport = globalLibrary.safeJson(assessResponse.content);
-
             if (!assessmentReport) {
                 winston.error(`❌ Failed to assess Task ${taskNumber}. Invalid JSON response.`);
-                throw new Error('AI returned invalid JSON for assessment');
+                throw new Error(`Invalid assessment JSON for Task ${taskNumber}`);
             }
 
             // Extract overall band score from assessment
             const overallBand = globalLibrary.getOverallBandFromReport(assessmentReport);
-            const score = overallBand ? Math.round(overallBand * 10) : 0; // Convert band to score (e.g., 7.5 -> 75)
+            const score = overallBand ? Math.round(overallBand * 10) : 0;
             const grade = overallBand || 0;
 
             winston.info(`✅ Assessment complete for Task ${taskNumber}: Band ${overallBand}`);
@@ -125,40 +122,47 @@ ${assessmentReport.annotated_version || 'N/A'}`;
                 grade,
                 plainFeedback,
                 skipped: false,
+                // Include data needed for OpenAI logging
+                writingText: task.writingText,
+                extractPromptInstructions: extractPrompt.instructions,
+                assessPromptInput: assessPrompt.input,
+                assessResponseChoices: assessResponse.choices,
             };
         };
 
-        // PARALLEL TASK EVALUATION: Process all tasks concurrently
-        // Using Promise.allSettled to handle partial failures (one task can fail without blocking others)
+        // PARALLEL TASK EVALUATION
         winston.info(`🚀 Starting parallel evaluation for ${tasks.length} task(s)...`);
 
-        const evaluationPromises = tasks.map((task, i) =>
-            evaluateSingleTask({ task, taskIndex: i }).catch((taskError) => {
-                winston.error(`❌ Error evaluating Task ${task.taskNumber || i + 1}:`, taskError);
-                return { taskNumber: task.taskNumber || i + 1, taskIndex: i, error: taskError, skipped: false };
-            })
+        const evaluationResults = await Promise.allSettled(
+            tasks.map((task, i) =>
+                evaluateSingleTask({ task, taskIndex: i }).catch((err) => ({
+                    taskNumber: task.taskNumber || i + 1,
+                    taskIndex: i,
+                    error: err,
+                    skipped: false,
+                }))
+            )
         );
 
-        const evaluationResults = await Promise.allSettled(evaluationPromises);
-
-        // Build taskReports from successful evaluations
+        const tasksResult = [];
         const taskReports = {};
-        evaluationResults.forEach((result) => {
-            if (result.status === 'fulfilled' && result.value && !result.value.skipped && !result.value.error) {
-                const { taskNumber, assessmentReport } = result.value;
-                taskReports[`task${taskNumber}`] = assessmentReport;
+
+        for (const res of evaluationResults) {
+            if (res.status === 'fulfilled' && res.value && !res.value.error) {
+                const r = res.value;
+                tasksResult.push(r);
+
+                if (!r.skipped) {
+                    taskReports[`task${r.taskNumber}`] = r.assessmentReport;
+                }
             }
-        });
+        }
 
-        winston.info(`✅ Parallel evaluation complete. Successful tasks: ${Object.keys(taskReports).length}`);
-
-        // Generate final combined report if both tasks are present
+        // COMBINED REPORT (TASK 1 + TASK 2)
         let finalReport = null;
 
         if (Object.keys(taskReports).length === 2) {
-            // Both Task 1 and Task 2 present - generate combined report
-            winston.info('🔀 Generating combined report for Task 1 + Task 2...');
-
+            winston.info('Generating combined report for Task 1 + Task 2...');
             const task1Band = globalLibrary.getOverallBandFromReport(taskReports.task1);
             const task2Band = globalLibrary.getOverallBandFromReport(taskReports.task2);
 
@@ -168,7 +172,7 @@ ${assessmentReport.annotated_version || 'N/A'}`;
             const combinedPrompt = finalCombinedReportPrompt({
                 task1Report: taskReports.task1,
                 task2Report: taskReports.task2,
-                rounded: rounded,
+                rounded,
             });
 
             const combinedResponse = await generateIeltsWritingEvaluation({
@@ -179,7 +183,6 @@ ${assessmentReport.annotated_version || 'N/A'}`;
             finalReport = globalLibrary.safeJson(combinedResponse.content);
 
             if (finalReport) {
-                // Ensure final_summary is present with correct values
                 finalReport.final_summary = {
                     ...(finalReport.final_summary || {}),
                     Overall_writing_band: rounded,
@@ -188,126 +191,83 @@ ${assessmentReport.annotated_version || 'N/A'}`;
                     weighted_estimated_writing_band: weighted,
                     rounded_writing_band: rounded,
                 };
-
-                winston.info(`✅ Combined report generated: Overall Band ${rounded}`);
             }
         }
 
-        // Generate PDF report using the new EJS template
-        try {
-            winston.info('📄 Generating IELTS writing PDF report...');
+        // OVERALL SCORE
+        const validScores = tasksResult.filter((t) => !t.skipped && typeof t.score === 'number').map((t) => t.score);
+        const overallScore = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null;
 
-            // Build the payload for PDF generation
+        // PDF GENERATION
+        let pdf = null;
+        let combinedPlainFeedback = '';
+
+        try {
             const aiPayload = {
                 ok: true,
                 mode: tasks.length === 1 ? (tasks[0].taskNumber === 1 ? 'task1_only' : 'task2_only') : 'combined',
-                result: {},
+                result:
+                    tasks.length === 1
+                        ? {
+                              overall_band: tasksResult[0]?.grade?.toString() || '—',
+                              ...tasksResult[0]?.assessmentReport,
+                          }
+                        : finalReport || buildManualCombinedReport(tasksResult),
             };
 
-            // Add task data to payload based on what was evaluated
-            if (tasks.length === 1) {
-                // Single task mode
-                const taskIndex = tasks[0].taskNumber - 1; // 0 or 1
-                const taskData = studentWritingAnswer.writingTasks[taskIndex];
-
-                // Parse AI feedback (already JSON structure)
-                let feedbackData;
-                try {
-                    feedbackData = JSON.parse(taskData.aiFeedBack || '{}');
-                } catch {
-                    feedbackData = {};
-                }
-
-                aiPayload.result = {
-                    overall_band: taskData.grade?.toString() || taskData.score?.toString() || '—',
-                    ...feedbackData,
-                };
-            } else {
-                // Combined mode - use final report if available, otherwise build manually
-                if (finalReport) {
-                    aiPayload.result = finalReport;
-                } else {
-                    // Fallback: build combined report manually
-                    const task1Data = studentWritingAnswer.writingTasks.find((t) => t.taskNumber === 1);
-                    const task2Data = studentWritingAnswer.writingTasks.find((t) => t.taskNumber === 2);
-
-                    let task1Feedback = {};
-                    let task2Feedback = {};
-
-                    try {
-                        task1Feedback = JSON.parse(task1Data?.aiFeedBack || '{}');
-                    } catch (err) {
-                        console.log('error task 1 feed back', err);
-                    }
-
-                    try {
-                        task2Feedback = JSON.parse(task2Data?.aiFeedBack || '{}');
-                    } catch (err) {
-                        console.log('error task 2 feed back', err);
-                    }
-
-                    // Calculate final summary
-                    const task1Band = parseFloat(task1Data?.grade || task1Data?.score || 0);
-                    const task2Band = parseFloat(task2Data?.grade || task2Data?.score || 0);
-                    const weightedBand = (task1Band * 0.33 + task2Band * 0.67).toFixed(3);
-                    const roundedBand = Math.round(weightedBand * 2) / 2; // Round to nearest 0.5
-
-                    aiPayload.result = {
-                        final_summary: {
-                            Overall_writing_band: roundedBand,
-                            task1_band: task1Band,
-                            task2_band: task2Band,
-                            weighted_estimated_writing_band: weightedBand,
-                            rounded_writing_band: roundedBand,
-                        },
-                        task1: {
-                            overall_band: task1Band?.toString() || '—',
-                            ...task1Feedback,
-                        },
-                        task2: {
-                            overall_band: task2Band?.toString() || '—',
-                            ...task2Feedback,
-                        },
-                    };
-                }
-            }
-
-            // Generate PDF
             const pdfResult = await htmlToPdf.generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer, testData);
 
-            // Create plain text combined feedback for root level
-            let combinedPlainFeedback = '';
+            pdf = {
+                pdfUrl: `${config.aws.s3.baseUrl}/${pdfResult.Key}`,
+                key: pdfResult.Key,
+                html: pdfResult.html,
+            };
+
             if (tasks.length === 1) {
-                const taskData = studentWritingAnswer.writingTasks[tasks[0].taskNumber - 1];
-                combinedPlainFeedback = taskData.aiFeedBackPlain || '';
+                combinedPlainFeedback = tasksResult[0]?.plainFeedback || '';
             } else {
-                // Combined mode - merge both task feedbacks
-                const task1Data = studentWritingAnswer.writingTasks.find((t) => t.taskNumber === 1);
-                const task2Data = studentWritingAnswer.writingTasks.find((t) => t.taskNumber === 2);
+                const t1 = tasksResult.find((t) => t.taskNumber === 1);
+                const t2 = tasksResult.find((t) => t.taskNumber === 2);
+
                 combinedPlainFeedback = `IELTS Writing - Combined Report
 
 === FINAL SUMMARY ===
-Overall Writing Band: ${aiPayload.result.final_summary?.Overall_writing_band || '—'}
-Task 1 Band: ${aiPayload.result.final_summary?.task1_band || '—'}
-Task 2 Band: ${aiPayload.result.final_summary?.task2_band || '—'}
+Overall Writing Band: ${finalReport?.final_summary?.Overall_writing_band || '—'}
+Task 1 Band: ${finalReport?.final_summary?.task1_band || '—'}
+Task 2 Band: ${finalReport?.final_summary?.task2_band || '—'}
 
 === TASK 1 FEEDBACK ===
-${task1Data?.aiFeedBackPlain || 'N/A'}
+${t1?.plainFeedback || 'N/A'}
 
 === TASK 2 FEEDBACK ===
-${task2Data?.aiFeedBackPlain || 'N/A'}`;
+${t2?.plainFeedback || 'N/A'}`;
             }
-            return {
-                pdfResult,
-                combinedPlainFeedback,
-            };
-        } catch (pdfError) {
-            winston.error('❌ Error generating IELTS PDF report:', pdfError);
-            // Don't throw - PDF generation failure shouldn't block the evaluation
+        } catch (err) {
+            console.log(err);
+            winston.error('PDF generation failed:', err);
         }
+
+        // ✅ FINAL RETURN (DB-READY PAYLOAD)
+        return {
+            studentWritingAnswer,
+            student, // Include student for OpenAI logging
+            evaluationResult: {
+                tasksResult,
+                taskReports,
+                combinedReport: finalReport,
+                overall: {
+                    overallScore,
+                    overallCheckingStatus: tasksResult.every((t) => t.skipped || t.grade) ? 'complete' : 'partial',
+                    lastEvaluatedAt: new Date(),
+                },
+                pdf,
+                combinedPlainFeedback,
+            },
+        };
     } catch (err) {
-        // Log error but don't throw - AI evaluation failure shouldn't block submission
+        console.log(err);
         winston.error('❌ Error in IELTS AI evaluation:', err);
+        return null;
     }
 };
 

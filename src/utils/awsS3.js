@@ -1,5 +1,6 @@
 const fs = require('fs');
 const AWS = require('aws-sdk');
+const config = require('../config/config');
 let uploadToS3 = async (path, contentType, outputFilePath) => {
     const s3 = new AWS.S3(config.aws.s3);
     const CHUNK_SIZE = 10000000; // 10MB

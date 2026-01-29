@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const winston = require('../config/logger');
 const { uploadToS3 } = require('../utils/awsS3');
-const { patchScoreInHtml } = require('../utils/globalHelper');
+const { patchScoreInHtml, todayString, processIeltsWritingFeedback } = require('../utils/globalHelper');
+const config = require('../config/config');
 async function generatePDF(html, writingAnswerId, fileName) {
     try {
         // 1. Define the output directory at root level
@@ -59,6 +60,7 @@ async function generatePDF(html, writingAnswerId, fileName) {
         winston.info(`PDF generated successfully at ${pdfPath}`);
         return resp;
     } catch (err) {
+        console.log(err);
         winston.error('PDF generation failed:', err);
         throw err;
     }
@@ -71,17 +73,15 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
     try {
         winston.info(`Starting IELTS PDF generation for student: ${student._id}, writing answer: ${studentWritingAnswer._id}`);
 
-        const ieltsWritingReportHelper = require('./ieltsWritingReportHelper');
-
         // 1. Extract student name
         const studentName = student.firstName || student.username || 'Student';
 
         // 2. Generate current date string
-        const generatedDate = ieltsWritingReportHelper.todayString();
+        const generatedDate = todayString();
 
         // 3. Process IELTS feedback data
         winston.info('Processing IELTS writing feedback...');
-        const processedData = ieltsWritingReportHelper.processIeltsWritingFeedback(aiPayload);
+        const processedData = processIeltsWritingFeedback(aiPayload);
 
         // 4. Prepare data for EJS template
         const templateData = {
@@ -178,6 +178,7 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
         // 13. Return S3 upload result
         return { ...uploadResult, html };
     } catch (error) {
+        console.log(error);
         winston.error('IELTS PDF generation failed:', error);
 
         // Clean up browser if still open
@@ -345,6 +346,7 @@ async function generateOETWritingPdf(
         // 15. Return S3 upload result
         return { ...uploadResult, html };
     } catch (error) {
+        console.log(error);
         winston.error('PDF generation failed:', error);
 
         // Clean up browser if still open

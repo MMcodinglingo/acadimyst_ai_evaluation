@@ -552,7 +552,8 @@ async function generateIeltsWritingEvaluation({ instructions, input }) {
             model: model,
         };
     } catch (err) {
-        winston.error('IELTS Writing Evaluation Error:', err?.message, err?.response?.data);
+        console.log(err);
+        winston.error('IELTS Writing Evaluation Error:', err);
 
         // Return error structure
         return {
@@ -566,10 +567,111 @@ async function generateIeltsWritingEvaluation({ instructions, input }) {
         };
     }
 }
+/**
+ * STEP 5: Final Combined Report Prompt
+ * Generates combined report when both Task 1 and Task 2 are present
+ */
+function finalCombinedReportPrompt({ task1Report, task2Report, rounded }) {
+    return {
+        instructions: `
+You are an IELTS Writing examiner.
+
+STRICT STYLE RULES:
+- Never write: "You wrote", "your answer", "you should".
+- Always write: "the candidate wrote...", "the response...", "the candidate should...".
+- Maintain an objective IELTS examiner tone.
+- Be explicit, evidence-based, and examiner-accurate.
+
+GOAL:
+Generate ONE final IELTS Writing report in STRICT JSON FORMAT.
+
+SCENARIOS:
+1) If BOTH Task 1 and Task 2 reports are provided:
+   - Produce a COMBINED report.
+   - Show ONLY the rounded final band.
+
+2) If ONLY ONE task report is provided:
+   - Produce a SINGLE-TASK report.
+   - Apply IELTS criteria relevant to that task only.
+
+CRITICAL OUTPUT REQUIREMENTS:
+1) OUTPUT MUST BE STRICT JSON ONLY.
+   - No markdown
+   - No explanations outside JSON
+
+2) FINAL SUMMARY (MANDATORY)
+Return a "final_summary" object with:
+{
+  "Overall_writing_band": number,
+  "task1_band": number | null,
+  "task2_band": number | null
+}
+
+TASK SECTIONS:
+- Include "task1" and/or "task2" objects exactly as present in the assessment outputs.
+- Keep all annotated versions and criteria from the assessments as-is.
+- Do NOT add any extra fields, calculations, or commentary not already present in Task 1/Task 2 assessments.
+
+OVERALL ANALYSIS:
+- Include top-level arrays only if present in assessments:
+  "overall_strengths", "overall_weaknesses", "areas_for_improvement"
+
+INLINE CORRECTIONS:
+- Preserve any ~~strikethrough~~ and **bold** corrections from assessments.
+- Do not add, remove, or invent annotations.
+
+EVIDENCE RULE:
+- All evaluations MUST be supported by the annotated versions from Task 1/Task 2.
+- Do NOT invent new data or commentary.
+`.trim(),
+
+        input: `
+TASK 1 REPORT JSON (may be null):
+${JSON.stringify(task1Report)}
+
+TASK 2 REPORT JSON (may be null):
+${JSON.stringify(task2Report)}
+
+Overall_WRITING_BAND (may be null if single task): ${rounded}
+`,
+    };
+}
+
+// Helper function to build manual combined report (fallback)
+const buildManualCombinedReport = (tasksResult) => {
+    const t1 = tasksResult.find((t) => t.taskNumber === 1);
+    const t2 = tasksResult.find((t) => t.taskNumber === 2);
+
+    const task1Band = t1?.grade || 0;
+    const task2Band = t2?.grade || 0;
+    const weightedBand = (task1Band * 0.33 + task2Band * 0.67).toFixed(3);
+    const roundedBand = Math.round(weightedBand * 2) / 2;
+
+    return {
+        final_summary: {
+            Overall_writing_band: roundedBand,
+            task1_band: task1Band,
+            task2_band: task2Band,
+            weighted_estimated_writing_band: weightedBand,
+            rounded_writing_band: roundedBand,
+        },
+        task1: {
+            overall_band: task1Band?.toString() || '—',
+            ...t1?.assessmentReport,
+        },
+        task2: {
+            overall_band: task2Band?.toString() || '—',
+            ...t2?.assessmentReport,
+        },
+    };
+};
+
 module.exports = {
     task1ExtractPrompt,
     task2ExtractPrompt,
     generateIeltsWritingEvaluation,
     task1AssessPrompt,
     task2AssessPrompt,
+    finalCombinedReportPrompt,
+    buildManualCombinedReport,
 };

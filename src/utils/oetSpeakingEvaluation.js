@@ -1088,79 +1088,8 @@ function parseIntelligibilityReport(intelligibilityReport) {
     };
 }
 
-/**
- * STEP 5: Final Combined Report Prompt
- * Generates combined report when both Task 1 and Task 2 are present
- */
-function finalCombinedReportPrompt({ task1Report, task2Report, rounded }) {
-    return {
-        instructions: `
-You are an IELTS Writing examiner.
-
-STRICT STYLE RULES:
-- Never write: "You wrote", "your answer", "you should".
-- Always write: "the candidate wrote...", "the response...", "the candidate should...".
-- Maintain an objective IELTS examiner tone.
-- Be explicit, evidence-based, and examiner-accurate.
-
-GOAL:
-Generate ONE final IELTS Writing report in STRICT JSON FORMAT.
-
-SCENARIOS:
-1) If BOTH Task 1 and Task 2 reports are provided:
-   - Produce a COMBINED report.
-   - Show ONLY the rounded final band.
-
-2) If ONLY ONE task report is provided:
-   - Produce a SINGLE-TASK report.
-   - Apply IELTS criteria relevant to that task only.
-
-CRITICAL OUTPUT REQUIREMENTS:
-1) OUTPUT MUST BE STRICT JSON ONLY.
-   - No markdown
-   - No explanations outside JSON
-
-2) FINAL SUMMARY (MANDATORY)
-Return a "final_summary" object with:
-{
-  "Overall_writing_band": number,
-  "task1_band": number | null,
-  "task2_band": number | null
-}
-
-TASK SECTIONS:
-- Include "task1" and/or "task2" objects exactly as present in the assessment outputs.
-- Keep all annotated versions and criteria from the assessments as-is.
-- Do NOT add any extra fields, calculations, or commentary not already present in Task 1/Task 2 assessments.
-
-OVERALL ANALYSIS:
-- Include top-level arrays only if present in assessments:
-  "overall_strengths", "overall_weaknesses", "areas_for_improvement"
-
-INLINE CORRECTIONS:
-- Preserve any ~~strikethrough~~ and **bold** corrections from assessments.
-- Do not add, remove, or invent annotations.
-
-EVIDENCE RULE:
-- All evaluations MUST be supported by the annotated versions from Task 1/Task 2.
-- Do NOT invent new data or commentary.
-`.trim(),
-
-        input: `
-TASK 1 REPORT JSON (may be null):
-${JSON.stringify(task1Report)}
-
-TASK 2 REPORT JSON (may be null):
-${JSON.stringify(task2Report)}
-
-Overall_WRITING_BAND (may be null if single task): ${rounded}
-`,
-    };
-}
-
 module.exports = {
     step1_WhisperThenDiarizeThenMerge,
     generateIntelligibilityReport_DoctorOnly,
     parseIntelligibilityReport,
-    finalCombinedReportPrompt,
 };

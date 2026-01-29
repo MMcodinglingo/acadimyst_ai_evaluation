@@ -17,12 +17,9 @@ const {
 } = require('../utils/globalHelper');
 const htmlToPdf = require('../utils/htmlToPdf.js');
 
-async function handleIeltsSpeakingEvaluation(studentSpeakingAnswer, speakingParts, speakingAudios, isAiBased, req) {
+async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingParts, speakingAudios, student }) {
     try {
-        if (!isAiBased) return;
-
         winston.info('Starting enhanced IELTS speaking evaluation with dual transcription and relevance checking...');
-
         // ============= INITIALIZE OPENAI CLIENT =============
         if (!process.env.OPENAI_API_KEY) {
             winston.error('OPENAI_API_KEY is missing in environment variables');
@@ -812,7 +809,7 @@ Note: One or more answers were off-topic for their questions, which reduced the 
         });
 
         const templateData = {
-            studentName: req.user.fullName || req.user.firstName || 'Student',
+            studentName: student.fullName || student.firstName || 'Student',
             moduleName: 'IELTS Speaking',
             generatedDate: generatedDate,
             scores: {
@@ -843,7 +840,7 @@ Note: One or more answers were off-topic for their questions, which reduced the 
         // ============= BUILD PLAIN TEXT FEEDBACK =============
         const plainFeedback = `
 === IELTS SPEAKING EVALUATION REPORT ===
-Student: ${req.user.fullName || req.user.firstName || 'Student'}
+Student: ${student.fullName || student.firstName || 'Student'}
 Generated: ${generatedDate}
 Overall Band: ${avgBandStr}
 
@@ -868,8 +865,37 @@ ${report.actionable_feedback || '—'}
 `.trim();
 
         return {
-            pdfResp,
-            plainFeedback,
+            studentSpeakingAnswer,
+            student,
+            evaluationResult: {
+                pdfUrl: { pdfUrl: pdfResp.s3Url, key: pdfResp.key },
+                partWiseScores,
+                avgBand: avgBandStr,
+                checkingStatus: 'checked',
+                scoreHistory: [
+                    {
+                        avgGrade: avgBandStr,
+                        evaluatedAt: new Date(),
+                        evaluationType: 'ai',
+                        partWiseScores,
+                    },
+                ],
+                // Save both plain and HTML feedback
+                aiFeedback: plainFeedback,
+                aiFeedBackHtml: speakingHtml,
+                accessorFeedBackHtml: speakingHtml,
+                // Store complete AI evaluation report (new field - flexible schema)
+                aiEvaluationReport: {
+                    task_relevance: report.task_relevance,
+                    scores: report.scores,
+                    summary: report.summary,
+                    strengths: report.strengths,
+                    areas_of_improvement: report.areas_of_improvement,
+                    actionable_feedback: report.actionable_feedback,
+                    tokenUsage: usage,
+                    generatedAt: new Date(),
+                },
+            },
         };
     } catch (err) {
         winston.error('Error in IELTS speaking evaluation:', err);

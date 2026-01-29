@@ -8,12 +8,11 @@ const {
     step1_WhisperThenDiarizeThenMerge,
     generateIntelligibilityReport_DoctorOnly,
     parseIntelligibilityReport,
-    getOetGrade,
 } = require('../utils/oetSpeakingEvaluation.js');
-
+const { getOetGrade, prepareCardData } = require('../utils/globalHelper');
 const htmlToPdf = require('../utils/htmlToPdf.js');
 
-async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speakingAudios, speakingMainCard, speakingCard) {
+async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speakingAudios, speakingMainCards, speakingCards) {
     try {
         let studentFullName = student.fullName;
 
@@ -43,7 +42,11 @@ async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speak
             await new Promise((resolve) => writer.on('finish', resolve));
 
             // Get role cards
-
+            let speakingMainCard = speakingMainCards[i];
+            let speakingCard = null;
+            if (speakingMainCard) {
+                speakingCard = speakingCards.filter((card) => card.mainCardId?.toString() === speakingMainCard._id.toString());
+            }
             // const rolePlayerCard = speakingCard?.find((c) => c.roleLabel.toLowerCase() !== 'doctor');
 
             // Step 1: Transcribe and diarize
@@ -97,11 +100,9 @@ async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speak
             year: 'numeric',
         });
 
-        // ✅ Prepare card data on server-side
-        const speakingReportRenderer = require('../helper/speakingReportRenderer.helper');
         const studentName = studentFullName || student.firstName || 'Student';
 
-        const cardsData = evaluationJson.map((cardEval) => speakingReportRenderer.prepareCardData(cardEval, studentName, generatedDate));
+        const cardsData = evaluationJson.map((cardEval) => prepareCardData(cardEval, studentName, generatedDate));
 
         const templateData = {
             card1: cardsData[0] || null,
@@ -127,27 +128,30 @@ async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speak
 
         // Update student answer
         return {
-            pdfUrl: { pdfUrl: pdfResult.s3Url, key: pdfResult.key },
-            cardWiseScores,
-            avgScore: avgMarks,
-            cardWiseGrades,
-            avgGrade: finalGrade,
-            evaluationJson: evaluationJson, // ✅ Save complete parsed evaluation data
-            partWiseFeedback: partWiseFeedback, // ✅ Save partwise feedback
-            scoreHistory: [
-                {
-                    avgScore: avgMarks,
-                    avgGrade: finalGrade,
-                    evaluatedAt: new Date(),
-                    evaluationType: 'ai',
-                    cardWiseScores,
-                    cardWiseGrades,
-                },
-            ],
-            checkingStatus: 'checked',
-            aiFeedBackHtml: speakingHtml,
-            accessorFeedBackHtml: speakingHtml,
-            transcripts: transcripts,
+            studentSpeakingAnswer,
+            evaluationResult: {
+                pdfUrl: { pdfUrl: pdfResult.s3Url, key: pdfResult.key },
+                cardWiseScores,
+                avgScore: avgMarks,
+                cardWiseGrades,
+                avgGrade: finalGrade,
+                evaluationJson: evaluationJson,
+                partWiseFeedback: partWiseFeedback,
+                scoreHistory: [
+                    {
+                        avgScore: avgMarks,
+                        avgGrade: finalGrade,
+                        evaluatedAt: new Date(),
+                        evaluationType: 'ai',
+                        cardWiseScores,
+                        cardWiseGrades,
+                    },
+                ],
+                checkingStatus: 'checked',
+                aiFeedBackHtml: speakingHtml,
+                accessorFeedBackHtml: speakingHtml,
+                transcripts: transcripts,
+            },
         };
     } catch (err) {
         winston.error('OET Speaking Evaluation Error:', err);

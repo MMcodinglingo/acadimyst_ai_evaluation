@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const { exec } = require('child_process');
 const winston = require('../config/logger');
+let DEFAULT_MODE = 'OET Medicine';
 /**
  * Extract all linguistic criteria sections
  */
@@ -815,6 +816,552 @@ function buildAssessmentCards(assessmentText) {
 function getPdfUrl(uploadResult) {
     return `${config.aws.s3.baseUrl}/${uploadResult.Key}`;
 }
+/**
+ * Get today's date in en-GB format
+ * @returns {String} - Formatted date string
+ */
+function todayString() {
+    const d = new Date();
+    return d.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+/**
+ * Build a section HTML block
+ * @param {String} title - Section title
+ * @param {String} innerHtml - Section content HTML
+ * @returns {String} - Section HTML block
+ */
+function section(title, innerHtml) {
+    return `
+        <div class="section">
+            <div class="section-title">${escapeHtml(title)}</div>
+            ${innerHtml}
+        </div>
+    `;
+}
+/**
+ * Build a key-value table HTML
+ * @param {Object} obj - Object with key-value pairs
+ * @param {String} headerLeft - Left column header
+ * @param {String} headerRight - Right column header
+ * @returns {String} - Table HTML
+ */
+function toKVTable(obj, headerLeft = 'Key', headerRight = 'Value') {
+    const o = obj && typeof obj === 'object' ? obj : {};
+    const keys = Object.keys(o);
+    if (!keys.length) return "<p class='muted'>—</p>";
+
+    return `
+        <table class="kv" cellspacing="0" cellpadding="0" border="0">
+            <thead>
+                <tr><th>${escapeHtml(headerLeft)}</th><th>${escapeHtml(headerRight)}</th></tr>
+            </thead>
+            <tbody>
+                ${keys
+                    .map((k) => {
+                        const v = o[k];
+                        const safeVal = v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+                        return `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(safeVal)}</td></tr>`;
+                    })
+                    .join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
+ * Convert band value to number
+ * @param {*} x - Band value
+ * @returns {Number|null} - Band as number or null
+ */
+function bandToNumber(x) {
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+}
+/**
+ * Convert markdown-style corrections to HTML
+ * ~~wrong~~ => red strike; **correct** => green bold
+ * @param {String} raw - Raw markdown text
+ * @returns {String} - HTML with styled corrections
+ */
+function markdownFixesToHtml(raw) {
+    const safe = escapeHtml(String(raw ?? ''));
+    const withStrike = safe.replace(/~~(.+?)~~/g, (m, g1) => {
+        return `<span style="color:#991b1b; text-decoration:line-through; font-weight:700;">${g1}</span>`;
+    });
+    const withBold = withStrike.replace(/\*\*(.+?)\*\*/g, (m, g1) => {
+        return `<span style="color:#166534; font-weight:900;">${g1}</span>`;
+    });
+    return withBold.replace(/\n/g, '<br/>');
+}
+/**
+ * Build task block sections for a single IELTS task
+ * @param {String} label - Task label (e.g., "Task 1", "Task 2")
+ * @param {Object} taskBlock - Task data object
+ * @returns {Array} - Array of section HTML strings
+ */
+function buildTaskBlock(label, taskBlock) {
+    const s = [];
+    if (!taskBlock) return s;
+
+    // 1) Overall band (ONLY)
+    s.push(section(`${label}: Overall Band`, toKVTable({ 'Overall Band': taskBlock.overall_band ?? '—' }, 'Item', 'Value')));
+
+    // 2) Originality justification
+    s.push(section(`${label}: Originality Justification`, `<p>${escapeHtml(taskBlock.originality_justification || '—')}</p>`));
+
+    // 3) Inline corrections
+    if (taskBlock.annotated_version) {
+        s.push(
+            section(
+                `${label}: Inline Corrections`,
+                `
+                <div class='corr'>
+                    <div class='hint'>
+                        Legend:
+                        <span style='color:#991b1b; text-decoration:line-through; font-weight:700;'>red strike</span>
+                        = errors,
+                        <span style='color:#166534; font-weight:900;'>green bold</span>
+                        = correction.
+                    </div>
+                    <div>${markdownFixesToHtml(taskBlock.annotated_version)}</div>
+                </div>
+            `
+            )
+        );
+    } else {
+        s.push(section(`${label}: Inline Corrections`, "<p class='muted'>—</p>"));
+    }
+
+    // 4) Summary
+    s.push(section(`${label}: Summary`, `<p>${escapeHtml(taskBlock.summary || '—')}</p>`));
+
+    // 5) Strengths
+    s.push(section(`${label}: Strengths`, `<p>${escapeHtml(taskBlock.strength || '—')}</p>`));
+
+    // 6) Areas of improvement
+    s.push(section(`${label}: Areas Of Improvement`, `<p>${escapeHtml(taskBlock.areas_of_improvement || '—')}</p>`));
+
+    return s;
+}
+/**
+ * Build combined sections for Task 1 and Task 2
+ * @param {Object} r - Result object with task1, task2, and final_summary
+ * @returns {Array} - Array of section HTML strings
+ */
+function buildCombinedSections(r) {
+    const s = [];
+    const fs = (r && r.final_summary) || {};
+
+    s.push(
+        section(
+            'Final Summary',
+            `
+                <table class="kv" cellspacing="0" cellpadding="0" border="0">
+                    <thead><tr><th>Item</th><th>Value</th></tr></thead>
+                    <tbody>
+                        <tr><td>Task 1 Band</td><td>${escapeHtml(fs.task1_band ?? '—')}</td></tr>
+                        <tr><td>Task 2 Band</td><td>${escapeHtml(fs.task2_band ?? '—')}</td></tr>
+                        <tr><td>Overall Writing Band</td><td>${escapeHtml(fs.rounded_writing_band ?? '—')}</td></tr>
+                    </tbody>
+                </table>
+            `
+        )
+    );
+
+    if (r && r.task1) s.push(...buildTaskBlock('Task 1', r.task1));
+    if (r && r.task2) s.push(...buildTaskBlock('Task 2', r.task2));
+
+    return s;
+}
+/**
+ * Render IELTS rubric band pills
+ * @param {*} activeBand - The active band value
+ * @returns {String} - HTML for rubric pills
+ */
+function renderRubricIELTS(activeBand) {
+    const items = [9, 8, 7, 6, 5, 4];
+    const ab = bandToNumber(activeBand);
+    return items
+        .map((b) => {
+            const isActive = ab !== null && Math.abs(ab - b) < 0.26;
+            return `<div class="rubric-pill ${isActive ? 'active' : ''}">Band ${b}</div>`;
+        })
+        .join('');
+}
+/**
+ * Process IELTS writing feedback from AI response
+ * @param {Object} payload - The full payload from OpenAI
+ * @returns {Object} - Processed data for template rendering
+ */
+function processIeltsWritingFeedback(payload) {
+    const mode = payload?.mode || 'combined';
+    const r = payload?.result || {};
+
+    let reportTitle = 'IELTS Writing Final Report';
+    let resultTitle = 'FINAL WRITING RESULT';
+    let bandBig = '—';
+    let bandLine = '—';
+    let sectionsHtml = '';
+
+    if (mode === 'task1_only') {
+        reportTitle = 'IELTS Writing Report (Task 1)';
+        resultTitle = 'TASK 1 RESULT';
+        const band = (r && r.overall_band) ?? '—';
+        bandBig = band;
+        bandLine = `Task 1 Band: ${band}`;
+        sectionsHtml = buildTaskBlock('Task 1', r).join('');
+    } else if (mode === 'task2_only') {
+        reportTitle = 'IELTS Writing Report (Task 2)';
+        resultTitle = 'TASK 2 RESULT';
+        const band = (r && r.overall_band) ?? '—';
+        bandBig = band;
+        bandLine = `Task 2 Band: ${band}`;
+        sectionsHtml = buildTaskBlock('Task 2', r).join('');
+    } else {
+        // combined
+        reportTitle = 'IELTS Writing Final Report';
+        resultTitle = 'FINAL WRITING RESULT';
+        const fs = (r && r.final_summary) || {};
+        const rounded = fs.rounded_writing_band ?? '—';
+        bandBig = rounded;
+        bandLine = `Final Band: ${rounded}`;
+        sectionsHtml = buildCombinedSections(r).join('');
+    }
+
+    // Generate rubric pills
+    const rubricHtml = renderRubricIELTS(bandBig);
+
+    return {
+        reportTitle,
+        resultTitle,
+        bandBig,
+        bandLine,
+        sectionsHtml,
+        rubricHtml,
+        mode,
+        result: r,
+    };
+}
+
+/**
+ * Extract doctor name from text or use student name as fallback
+ */
+function extractDoctor(text, studentName) {
+    const lines = String(text || '')
+        .replace(/\r\n/g, '\n')
+        .split('\n');
+
+    const first = lines.find((l) => l.trim())?.trim() || '';
+    if (!first) return studentName || 'Doctor';
+
+    const looksLikeNameLine = /^(Dr\.|Doctor\.|Nurse\.|Pharmacist\.|Physiotherapist\.|Dentist\.)\s+/i.test(first);
+
+    if (looksLikeNameLine) {
+        // If the name contains "Unknown", replace it with the actual student name
+        if (/unknown/i.test(first)) {
+            return first.replace(/unknown/i, studentName || '');
+        }
+        return first;
+    }
+
+    return studentName || 'Doctor';
+}
+/**
+ * Strip the leading name line from text
+ */
+function stripLeadingNameLine(text) {
+    const lines = String(text || '')
+        .replace(/\r\n/g, '\n')
+        .split('\n');
+
+    const idx = lines.findIndex((l) => l.trim());
+    if (idx === -1) return text;
+
+    const first = lines[idx].trim();
+
+    const looksLikeNameLine = /^(Dr\.|Doctor\.|Nurse\.|Pharmacist\.|Physiotherapist\.|Dentist\.)\s+/i.test(first);
+
+    if (!looksLikeNameLine) return text;
+
+    lines.splice(idx, 1);
+
+    while (lines[idx] !== undefined && lines[idx].trim() === '') {
+        lines.splice(idx, 1);
+    }
+
+    return lines.join('\n');
+}
+/**
+ * Extract score from text (e.g., "Score: 450/500")
+ */
+function extractScore500(text) {
+    const m =
+        String(text || '').match(/Score:\s*(\d{1,3})\s*\/\s*500/i) ||
+        String(text || '').match(/Total:\s*(\d{1,3})\s*\/\s*500/i) ||
+        String(text || '').match(/TOTAL\s*SCORE:\s*(\d{1,3})\s*\/\s*500/i);
+    return m ? Number(m[1]) : null;
+}
+/**
+ * Extract OET grade from text
+ */
+function extractGrade(text) {
+    const m =
+        String(text || '').match(/^\s*Grade:\s*([A-E](?:\+)?)\s*$/im) ||
+        String(text || '').match(/^\s*OET\s*Grade:\s*([A-E](?:\+)?)\s*$/im);
+
+    return m ? m[1].toUpperCase().replace(/\s+/g, '') : null;
+}
+/**
+ * Split text into sections with titles and bodies
+ */
+function splitSections(text) {
+    const lines = String(text || '')
+        .replace(/\r\n/g, '\n')
+        .split('\n');
+
+    const sections = [];
+    let current = null;
+    let skipGradeBlock = false;
+
+    const push = () => {
+        if (!current) return;
+        const body = current.lines.join('\n').trim();
+        if (current.title && body) sections.push({ title: current.title, body });
+    };
+
+    for (const rawLine of lines) {
+        const line = rawLine ?? '';
+        const heading = isHeadingLine(line);
+
+        // If we are skipping grade block, keep skipping until a NEW heading appears
+        if (skipGradeBlock) {
+            if (heading) {
+                // if another heading starts, stop skipping and start new section
+                if (heading.trim().toUpperCase() !== 'GRADE AND SCORE') {
+                    skipGradeBlock = false;
+                    if (current) push();
+                    current = { title: heading, lines: [] };
+                }
+            }
+            // otherwise ignore all lines inside grade block
+            continue;
+        }
+
+        // ignore banner heading
+        if (heading && heading.toUpperCase().includes('OET SPEAKING ASSESSMENT REPORT')) {
+            if (current) push();
+            current = null;
+            continue;
+        }
+
+        // Start skipping the whole grade block
+        if (heading && heading.trim().toUpperCase() === 'GRADE AND SCORE') {
+            if (current) push();
+            current = null;
+            skipGradeBlock = true;
+            continue;
+        }
+
+        // normal heading
+        if (heading) {
+            if (current) push();
+            current = { title: heading, lines: [] };
+            continue;
+        }
+
+        // skip metadata-ish lines (include your grade formats too)
+        if (/^\s*Doctor:\s*/i.test(line)) continue;
+        if (/^\s*Score:\s*\d+\s*\/\s*500/i.test(line)) continue;
+        if (/^\s*TOTAL\s*SCORE:\s*\d+\s*\/\s*500/i.test(line)) continue;
+        if (/^\s*Overall\s*Score:\s*\d+\s*\/\s*500/i.test(line)) continue;
+        if (/^\s*Grade:\s*[A-E](?:\+)?\s*$/i.test(line)) continue;
+        if (/^\s*OET\s*Grade:\s*[A-E](?:\+)?\s*$/i.test(line)) continue;
+
+        // create default section only once when real content starts
+        if (!current) {
+            if (String(line).trim()) current = { title: 'Summary', lines: [] };
+            else continue;
+        }
+
+        current.lines.push(line);
+    }
+
+    if (current) push();
+
+    return sections.filter((s) => s.title.trim().toUpperCase() !== 'GRADE AND SCORE');
+}
+/**
+ * Convert body text to HTML (paragraphs and lists)
+ */
+function bodyToHtml(bodyText) {
+    const lines = String(bodyText || '').split('\n');
+
+    const blocks = [];
+    let para = [];
+    let list = [];
+
+    const flushPara = () => {
+        const t = para.join('\n').trim();
+        if (t) blocks.push({ type: 'p', text: t });
+        para = [];
+    };
+
+    const flushList = () => {
+        if (list.length) blocks.push({ type: 'ol', items: list.slice() });
+        list = [];
+    };
+
+    for (const raw of lines) {
+        const line = String(raw || '').trimEnd();
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+            flushList();
+            flushPara();
+            continue;
+        }
+
+        if (trimmed.startsWith('- ')) {
+            flushPara();
+            list.push(trimmed.replace(/^-\s+/, '').trim());
+            continue;
+        }
+
+        flushList();
+        para.push(line);
+    }
+
+    flushList();
+    flushPara();
+
+    return blocks
+        .map((b) => {
+            if (b.type === 'ol') {
+                const items = b.items.map((it) => `<li>${formatInlineBold(escapeHtml(it))}</li>`).join('');
+                return `<ol>${items}</ol>`;
+            }
+            const safe = formatInlineBold(escapeHtml(b.text));
+            const withBreaks = safe.replace(/\n/g, '<br/>');
+            return `<p>${withBreaks}</p>`;
+        })
+        .join('');
+}
+/**
+ * Check if a line is a heading
+ */
+function isHeadingLine(line) {
+    const s = String(line || '').trim();
+    if (!s) return null;
+
+    // Case 1: **HEADING**
+    const m = s.match(/^\*\*(.+?)\*\*\s*$/);
+    if (m && m[1]?.trim()) return m[1].trim();
+
+    // Ignore metadata-ish lines
+    const isMeta =
+        /^Doctor:\s*/i.test(s) ||
+        /^Score:\s*\d+\s*\/\s*500/i.test(s) ||
+        /^Overall\s*Score:\s*\d+\s*\/\s*500/i.test(s) ||
+        /^OET\s*Grade:\s*[A-E](?:\+)?\s*$/i.test(s) ||
+        /^TOTAL\s*SCORE:/i.test(s);
+
+    if (isMeta) return null;
+
+    // Case 2: Numbered headings like:
+    // "1-Summary", "1. Summary", "2) Strengths", "3: Areas for Improvement"
+    const n = s.match(/^\s*(\d+)\s*[-.)\:]\s*(.+?)\s*$/);
+    if (n && n[2]?.trim()) {
+        const title = n[2].trim();
+        // Only accept common section titles (prevents false positives)
+        if (/^summary$/i.test(title)) return 'Summary';
+        if (/^strengths?$/i.test(title)) return 'Strengths';
+        if (/^areas?\s+for\s+improvement$/i.test(title)) return 'Areas for Improvement';
+        if (/^grade\s+and\s+score$/i.test(title)) return 'Grade and Score';
+        // If you want to allow any numbered heading, return title;
+        // but safer to whitelist like above.
+    }
+
+    // Case 3: Plain heading
+    const looksLikeHeading = s.length <= 40 && !/[.:]$/.test(s) && !s.includes(':') && /^[A-Za-z][A-Za-z &/]+$/.test(s);
+
+    return looksLikeHeading ? s : null;
+}
+/**
+ * Format inline bold markdown (**text**) to HTML <strong>
+ */
+function formatInlineBold(safeHtmlText) {
+    return safeHtmlText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+/**
+ * Render rubric HTML
+ */
+function renderRubric(activeGrade) {
+    const items = [
+        { g: 'A', r: '450–500' },
+        { g: 'B', r: '350–449' },
+        { g: 'C+', r: '300–349' },
+        { g: 'C', r: '200–299' },
+        { g: 'D', r: '100–199' },
+        { g: 'E', r: '0–99' },
+    ];
+
+    return items
+        .map((x) => {
+            const isActive =
+                String(activeGrade || '')
+                    .replace(/\s+/g, '')
+                    .toUpperCase() === x.g.replace(/\s+/g, '').toUpperCase();
+
+            return `<div class="rubric-pill ${isActive ? 'active' : ''}">
+              ${escapeHtml(x.g)}: ${escapeHtml(x.r)}
+            </div>`;
+        })
+        .join('');
+}
+function prepareCardData(evaluationObj, studentName, generatedDate) {
+    const content = evaluationObj.fullReport || '';
+
+    const doctorName = extractDoctor(content, studentName);
+    const cleanContent = stripLeadingNameLine(content);
+
+    const score = evaluationObj.totalScore || extractScore500(cleanContent);
+    const grade = evaluationObj.oetGrade || extractGrade(cleanContent);
+    const normalizedGrade = grade ? grade.replace(/\s+/g, '') : null;
+
+    const sections = splitSections(cleanContent);
+    const sectionsHtml =
+        sections.length === 0
+            ? '<div class="section"><p class="muted">No report sections found.</p></div>'
+            : sections
+                  .map(
+                      (s) => `
+                <div class="section">
+                  <div class="section-title">${escapeHtml(s.title)}</div>
+                  ${bodyToHtml(s.body)}
+                </div>
+              `
+                  )
+                  .join('');
+
+    const rubricHtml = renderRubric(normalizedGrade || '');
+
+    return {
+        cardNumber: evaluationObj.cardNumber || 1,
+        doctorName: doctorName,
+        moduleName: DEFAULT_MODE,
+        grade: normalizedGrade || '—',
+        score: score ?? '—',
+        totalScoreLine: `TOTAL SCORE: ${score ?? '—'}/500`,
+        rubricHtml: rubricHtml,
+        sectionsHtml: sectionsHtml,
+        generatedDate: generatedDate,
+        reportTitle: `${DEFAULT_MODE} Report`,
+    };
+}
 module.exports = {
     extractLinguisticCriteria,
     extractClinicalCommunication,
@@ -851,4 +1398,7 @@ module.exports = {
     getAssessmentOnly,
     buildAssessmentCards,
     getPdfUrl,
+    todayString,
+    processIeltsWritingFeedback,
+    prepareCardData,
 };
