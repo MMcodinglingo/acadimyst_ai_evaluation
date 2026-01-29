@@ -17,35 +17,40 @@ connectDB().then(() => {
 
 const redisManager = require('./config/redis/index');
 const config = require('./config/config');
-redisManager
-    .initialize(config)
-    .then((initResult) => {
-        winston.info('Redis/BullMQ Initialization Complete', {
-            service: 'Redis',
-            redis: initResult.redis?.status,
-            bullmq: initResult.bullmq?.status,
-        });
+// ! DO not Change this code
 
-        // Graceful shutdown handler (using 'once' to prevent duplicate handlers on hot reload)
-        process.once('SIGTERM', async () => {
-            winston.info('SIGTERM received, shutting down gracefully...', { service: 'Redis' });
-            await redisManager.shutdown();
-            process.exit(0);
-        });
+if (process.env.NODE_ENV !== 'development') {
+    redisManager
+        .initialize(config)
+        .then((initResult) => {
+            winston.info('Redis/BullMQ Initialization Complete', {
+                service: 'Redis',
+                redis: initResult.redis?.status,
+                bullmq: initResult.bullmq?.status,
+            });
 
-        process.once('SIGINT', async () => {
-            winston.info('SIGINT received, shutting down gracefully...', { service: 'Redis' });
-            await redisManager.shutdown();
-            process.exit(0);
+            // Graceful shutdown handler (using 'once' to prevent duplicate handlers on hot reload)
+            process.once('SIGTERM', async () => {
+                winston.info('SIGTERM received, shutting down gracefully...', { service: 'Redis' });
+                await redisManager.shutdown();
+                process.exit(0);
+            });
+
+            process.once('SIGINT', async () => {
+                winston.info('SIGINT received, shutting down gracefully...', { service: 'Redis' });
+                await redisManager.shutdown();
+                process.exit(0);
+            });
+        })
+        .catch((error) => {
+            winston.error('Failed to initialize Redis/BullMQ', {
+                service: 'Redis',
+                error: error.message,
+            });
+            // Don't exit, allow app to run without Redis
         });
-    })
-    .catch((error) => {
-        winston.error('Failed to initialize Redis/BullMQ', {
-            service: 'Redis',
-            error: error.message,
-        });
-        // Don't exit, allow app to run without Redis
-    });
+}
+
 const exitHandler = () => {
     if (server) {
         server.close(() => {
