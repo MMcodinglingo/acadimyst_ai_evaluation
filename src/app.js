@@ -26,6 +26,10 @@ app.use(cors());
 // v1 api routes
 app.use('/v1', routes);
 
+// for report rendering
+app.use('/reports', require('./routes/report.routes'));
+
+
 // send back a 404 error for any unknown api request
 app.use((req, res, next) => {
   const error = new Error('Not found');

@@ -28,37 +28,64 @@ async function generatePDF(html, writingAnswerId, fileName) {
 
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'networkidle0' });
-        await page.emulateMediaType('screen');
+        await page.emulateMediaType('print');
 
         // 5. Generate PDF
+        winston.info(`Generating PDF: ${pdfPath}`);
         await page.pdf({
             path: pdfPath,
             format: 'A4',
             printBackground: true,
+
+            // ✅ must be TRUE to show footer on every page
+            displayHeaderFooter: false,
+
+            // ✅ reserve space for footer
             margin: {
-                top: '0px',
-                right: '0px',
-                bottom: '0px',
-                left: '0px',
+                top: '15mm',
+                right: '12mm',
+                bottom: '22mm',
+                left: '12mm',
             },
+
+
+            // ✅ RED footer on every page
+            footerTemplate: `
+    <div style="width:100%; padding:0 12mm;">
+      <div style="
+        background:#9d2235;
+        color:#fff;
+        font-size:10px;
+        font-weight:700;
+        text-align:center;
+        padding:8px 0;
+        border-radius:8px;
+      ">
+        MM Coding and M&amp;M Institute
+        <span style="float:right; margin-right:8px; font-weight:600;">
+          <span class="pageNumber"></span>/<span class="totalPages"></span>
+        </span>
+      </div>
+    </div>
+  `,
         });
 
         await browser.close();
-        let s3_path_key = `accessorFeedback/${writingAnswerId}_${Date.now()}.pdf`;
+        // let s3_path_key = `accessorFeedback/${writingAnswerId}_${Date.now()}.pdf`;
 
-        let contentType = '.pdf';
-        let resp = await uploadToS3(s3_path_key, contentType, pdfPath);
-        let s3Url = `${config.aws.s3.baseUrl}/${resp.Key}`;
-        resp.s3Url = s3Url;
-        if (fs.existsSync(pdfPath)) {
-            fs.unlinkSync(pdfPath);
-            winston.info(`Deleted local file: ${pdfPath}`);
-        } else {
-            winston.warn(`Local PDF not found for deletion: ${pdfPath}`);
-        }
+        // let contentType = '.pdf';
+        // let resp = await uploadToS3(s3_path_key, contentType, pdfPath);
+        // let s3Url = `${config.aws.s3.baseUrl}/${resp.Key}`;
+        // resp.s3Url = s3Url;
+        // if (fs.existsSync(pdfPath)) {
+        //     fs.unlinkSync(pdfPath);
+        //     winston.info(`Deleted local file: ${pdfPath}`);
+        // } else {
+        //     winston.warn(`Local PDF not found for deletion: ${pdfPath}`);
+        // }
 
         winston.info(`PDF generated successfully at ${pdfPath}`);
-        return resp;
+        // return resp;
     } catch (err) {
         console.log(err);
         winston.error('PDF generation failed:', err);
@@ -135,7 +162,7 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
         });
 
         // Emulate screen media for better rendering
-        await page.emulateMediaType('screen');
+        await page.emulateMediaType('print');
 
         // Wait a bit for rendering
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -303,7 +330,7 @@ async function generateOETWritingPdf(
         });
 
         // Emulate screen media for better rendering
-        await page.emulateMediaType('screen');
+        await page.emulateMediaType('print');
 
         // Wait a bit for JavaScript to execute and render cards
         await new Promise((resolve) => setTimeout(resolve, 2000));
