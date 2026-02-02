@@ -166,7 +166,7 @@ ${assessmentReport.annotated_version || 'N/A'}`;
             const task1Band = globalLibrary.getOverallBandFromReport(taskReports.task1);
             const task2Band = globalLibrary.getOverallBandFromReport(taskReports.task2);
 
-            const weighted = Number((task1Band * 0.333 + task2Band * 0.666).toFixed(3));
+            const weighted = Number((task1Band * 0.33 + task2Band * 0.66).toFixed(2));
             const rounded = globalLibrary.roundToHalfBand(weighted);
 
             const combinedPrompt = finalCombinedReportPrompt({

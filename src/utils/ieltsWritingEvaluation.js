@@ -92,7 +92,7 @@ const buildManualCombinedReport = (tasksResult) => {
 
     const task1Band = t1?.grade || 0;
     const task2Band = t2?.grade || 0;
-    const weightedBand = (task1Band * 0.33 + task2Band * 0.67).toFixed(3);
+    const weightedBand = (task1Band * 0.33 + task2Band * 0.66).toFixed(2);
     const roundedBand = Math.round(weightedBand * 2) / 2;
 
     return {

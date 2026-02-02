@@ -102,6 +102,7 @@ If the student's sentence is correct, leave it unchanged — no overcorrection.
 
 Correction Method
 Always show inline corrections (even for small errors like commas).
+Always suggest good use of vocabulary if the candidate has not used appropriate words.
 
 Do not silently auto‑correct.
 Preserve the student's meaning while improving accuracy and style.
@@ -191,16 +192,6 @@ Word Count Rule (TEXT ONLY):
 - Never write "Word count:" or "Under length:" anywhere.
 – Clearly explain how underlength limits the achievable band score.
 
-Originality / Memorisation Check
-
-Identify likely memorized or template-based responses by checking for:
-
-• Generic paragraph structure
-• Weak or vague connection to task visuals or prompts
-• Recycled or formulaic phrases
-• Over-generalised or unnatural language
-
-→ Assign "originality_risk" as low / medium / high, with a short justification.
 
 General Training Task 1 (Letters Only)
 
@@ -247,6 +238,11 @@ Corrections & Feedback Requirements (Task 1)
 
 Annotated Version:
 
+- Suggest vocabulary corrections if the candidate has not used appropriate words.
+- dont invent vocabulary suggestions.
+- stritly dont strikethough or correct words which are already correct in the student response.
+- dont invent errors or mistakes.
+- dont wrongly strikethough correct words.e.g practice vs practise. , globalized vs globalised etc. 
 • Provide an "annotated_version" of the candidate's full response.
 • Use:
 - Use one band Above than the current band writing of student response for vocabulary suggestions for corrections.
@@ -260,11 +256,10 @@ Annotated Version:
 
 json output format:
 {
-  "originality_justification": "State the originality risk as low, medium, or high and give a short examiner-style justification using words such as memorized, organized, recognizes, targets, summarizing, memorization, and capitalization. Focus on whether the response appears task-specific or template-based, with brief evidence from the candidate's language or structure.",
-  "summary": "Start with: 'The total words of the student response is X, and it is under length/on target/over length.' Then continue ONE paragraph where each criterion is implied as sentences in this order: (1) how well key features are covered accurately and objectively, (2) how ideas are organized and linked, (3) appropriacy/range of vocabulary, (4) control/range of grammar and punctuation. Do NOT use labels.",
-  "strength": "Write ONE continuous paragraph in this exact sequence: first highlight what the candidate does well in addressing the task with brief supporting examples; next describe strengths in logical organization and use of linking devices; then comment on effective or precise vocabulary choices; finally note strong grammatical control or successful complex structures. Use brief evidence from the response and avoid overpraise.",
-  "areas_of_improvement": "Write ONE continuous paragraph in this exact sequence: first explain weaknesses in how the task is addressed, with evidence; next describe problems in organization or cohesion; then identify inappropriate, repetitive, or inaccurate word choices; finally point out grammatical errors or limited structures. Present each issue as 'the candidate wrote X; this should be Y' and include only genuine, meaningful errors without overcorrection.",
-  "annotated_version": "Provide the candidate's full response with inline corrections only. Use strikethrough for incorrect text and bold for the correction. Correct even small punctuation and article errors, preserve the original meaning, do not rewrite whole sentences, and suggest vocabulary only one band above the candidate's demonstrated level.",
+  "summary": "Start with: 'Write about is it  under length/on target/over length but dont write the number.'Then continue in a natural examiner tone, as if giving feedback to a candidate.Use flowing sentences that connect ideas smoothly, rather than listing criteria. The language should feel conversational but still professional.Continue ONE paragraph where each criterion is implied as sentences in this order: how well key features are covered accurately and objectively, Task achievement or task response according to task,how ideas are organized and linked, coherence and cohesion,  appropriacy/range of vocabulary,lexical resource,  control/range of grammar and punctuation. Do NOT use labels.if response is off topic or response has only words which dont have meaning or response is not related to the task or it is in another language then just write overall band as 0.0 and in summary mention that the response is off topic or not related to the task or in another language.dont write anything else in summary.dont evaluate other criteria.",
+  "strength": "Continue in a natural examiner tone, as if giving feedback to a candidate. Use flowing sentences that connect ideas smoothly, rather than listing criteria. The language should feel conversational but still professional.Write ONE continuous paragraph in this exact sequence: first highlight what the candidate does well in addressing the task with brief supporting examples; next describe strengths in logical organization and use of linking devices; then comment on effective or precise vocabulary choices; finally note strong grammatical control or successful complex structures. Use brief evidence from the response and avoid overpraise.if response is off topic or response has only words which dont have meaning or response is not related to the task or it is in another language then just write overall band as 0.0 and in strengths mention that the response is off topic or not related to the task or in another language.dont write anything else in strengths.dont evaluate other criteria.",
+  "areas_of_improvement": "Continue in a natural examiner tone, as if giving feedback to a candidate. Use flowing sentences that connect ideas smoothly, rather than listing criteria. The language should feel conversational but still professional.Write ONE continuous paragraph in this exact sequence: first explain weaknesses in how the task is addressed, with evidence; next describe problems in organization or cohesion; then identify inappropriate, repetitive, or inaccurate word choices; finally point out grammatical errors or limited structures. Present each issue as 'the candidate wrote X; this should be Y' and include only genuine, meaningful errors without overcorrection.if response is off topic or response has only words which dont have meaning or response is not related to the task or it is in another language then just write overall band as 0.0 and in areas of improvement mention that the response is off topic or not related to the task or in another language.dont write anything else in areas of improvements.dont evaluate other criteria.",
+  "annotated_version": "Provide the candidate's full response with inline corrections only. Use strikethrough for incorrect text and bold for the correction. Correct even small punctuation and article errors, preserve the original meaning, do not rewrite whole sentences, and always suggest good vocabulary if candiadate has not used appropriate words.",
   "overall_band": "Calculate the overall band as the average of the four criteria scores, rounded to the nearest 0.5, and output only the final numeric band score (for example, 5.0)."
 }
 
@@ -304,6 +299,7 @@ If the student's sentence is correct, leave it unchanged — no overcorrection.
 
 Correction Method
 Always show inline corrections (even for small errors like commas).
+Always suggest good use of vocabulary if the candidate has not used appropriate words.
 
 Do not silently auto‑correct.
 Preserve the student's meaning while improving accuracy and style.
@@ -395,16 +391,6 @@ Word Count Rule (TEXT ONLY):
 - Never write "Word count:" or "Under length:" anywhere.
 – Clearly explain how underlength limits the achievable band score.
 
-Originality / Memorisation Check
-
-Identify likely memorised or template-based responses by checking for:
-
-• Generic or pre-learned arguments
-• Weak linkage to the specific question wording
-• Recycled phrases or formulaic introductions/conclusions
-• Over-generalised or unnatural language
-
-→ Assign "originality_risk" as low / medium / high, with a brief justification.
 
 Formality Rules (Task 2)
 
@@ -454,6 +440,11 @@ Corrections & Feedback Requirements (Task 2)
 
 Annotated Version:
 
+- Suggest vocabulary corrections if the candidate has not used appropriate words.
+- dont invent vocabulary suggestions.
+- stritly dont strikethough or correct words which are already correct in the student response.
+- dont invent errors or mistakes.
+- dont wrongly strikethough correct words.e.g practice vs practise. , globalized vs globalised etc. 
 - Donot miss to strikethrough a mistake or error in the student response.
 • Provide an "annotated_version" of the candidate's full essay.
 • Use:
@@ -470,11 +461,10 @@ Annotated Version:
 
 json output format:
 {
-  "originality_justification": "State the originality risk as low, medium, or high and give a short examiner-style justification using words such as memorized, organized, recognizes, targets, summarizing, memorization, and capitalization. Focus on whether the response appears task-specific or template-based, with brief evidence from the candidate's language or structure.",
-  "summary": "Start with: 'The total words of the student response is X, and it is under length/on target/over length.' Then continue ONE paragraph where each criterion is implied as sentences in this order: (1) how well key features are covered accurately and objectively, (2) how ideas are organized and linked, (3) appropriacy/range of vocabulary, (4) control/range of grammar and punctuation. Do NOT use labels.",
-  "strength": "Write ONE continuous paragraph in this exact sequence: first highlight what the candidate does well in addressing the task with brief supporting examples; next describe strengths in logical organization and use of linking devices; then comment on effective or precise vocabulary choices; finally note strong grammatical control or successful complex structures. Use brief evidence from the response and avoid overpraise.",
-  "areas_of_improvement": "Write ONE continuous paragraph in this exact sequence: first explain weaknesses in how the task is addressed, with evidence; next describe problems in organization or cohesion; then identify inappropriate, repetitive, or inaccurate word choices; finally point out grammatical errors or limited structures. Present each issue as 'the candidate wrote X; this should be Y' and include only genuine, meaningful errors without overcorrection.",
-  "annotated_version": "Provide the candidate's full response with inline corrections only. Use strikethrough for incorrect text and bold for the correction. Correct even small punctuation and article errors, preserve the original meaning, do not rewrite whole sentences, and suggest vocabulary only one band above the candidate's demonstrated level.",
+  "summary": "Start with: 'Write about is it  under length/on target/over length but dont write the number.'Then continue in a natural examiner tone, as if giving feedback to a candidate.Use flowing sentences that connect ideas smoothly, rather than listing criteria. The language should feel conversational but still professional.Continue ONE paragraph where each criterion is implied as sentences in this order: how well key features are covered accurately and objectively, Task achievement or task response according to task,how ideas are organized and linked, coherence and cohesion,  appropriacy/range of vocabulary,lexical resource,  control/range of grammar and punctuation. Do NOT use labels.if response is off topic or response has only words which dont have meaning or response is not related to the task or it is in another language then just write overall band as 0.0 and in summary mention that the response is off topic or not related to the task or in another language.dont write anything else in summary.dont evaluate other criteria.",
+  "strength": "Continue in a natural examiner tone, as if giving feedback to a candidate. Use flowing sentences that connect ideas smoothly, rather than listing criteria. The language should feel conversational but still professional.Write ONE continuous paragraph in this exact sequence: first highlight what the candidate does well in addressing the task with brief supporting examples; next describe strengths in logical organization and use of linking devices; then comment on effective or precise vocabulary choices; finally note strong grammatical control or successful complex structures. Use brief evidence from the response and avoid overpraise.if response is off topic or response has only words which dont have meaning or response is not related to the task or it is in another language then just write overall band as 0.0 and in strengths mention that the response is off topic or not related to the task or in another language.dont write anything else in strengths.dont evaluate other criteria.",
+  "areas_of_improvement": "Continue in a natural examiner tone, as if giving feedback to a candidate. Use flowing sentences that connect ideas smoothly, rather than listing criteria. The language should feel conversational but still professional.Write ONE continuous paragraph in this exact sequence: first explain weaknesses in how the task is addressed, with evidence; next describe problems in organization or cohesion; then identify inappropriate, repetitive, or inaccurate word choices; finally point out grammatical errors or limited structures. Present each issue as 'the candidate wrote X; this should be Y' and include only genuine, meaningful errors without overcorrection.if response is off topic or response has only words which dont have meaning or response is not related to the task or it is in another language then just write overall band as 0.0 and in areas of improvement mention that the response is off topic or not related to the task or in another language.dont write anything else in areas of improvements.dont evaluate other criteria.",
+  "annotated_version": "Provide the candidate's full response with inline corrections only. Use strikethrough for incorrect text and bold for the correction. Correct even small punctuation and article errors, preserve the original meaning, do not rewrite whole sentences, and always suggest good vocabulary if candiadate has not used appropriate words.",
   "overall_band": "Calculate the overall band as the average of the four criteria scores, rounded to the nearest 0.5, and output only the final numeric band score (for example, 5.0)."
 }
 
