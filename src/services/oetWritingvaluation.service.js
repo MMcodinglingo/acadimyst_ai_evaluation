@@ -11,7 +11,7 @@ const htmlToPdf = require('../utils/htmlToPdf.js');
 const handleOetWritingEvaluation = async ({ studentWritingAnswer, student, testData, writingText, course }) => {
     let finalWritingText = writingText;
 
-    // 👇 NEW LOGIC - Process all images if multiple pages
+    //  NEW LOGIC - Process all images if multiple pages
     if (studentWritingAnswer.isPictureBased) {
         const images = studentWritingAnswer.writingImage || [];
         const totalPages = images.length;
