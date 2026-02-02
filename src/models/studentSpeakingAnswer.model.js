@@ -22,8 +22,8 @@ const studentSpeakingAnswerSchema = new Schema(
     {
 
         studentId: { type: Schema.Types.ObjectId },
-        courseId: { type: Schema.Types.ObjectId},
-        speakingTestId: { type: Schema.Types.ObjectId},
+        courseId: { type: Schema.Types.ObjectId },
+        speakingTestId: { type: Schema.Types.ObjectId },
         examType: { type: String, enum: ['oet', 'ielts', 'pte'], default: 'oet' },
         evaluatorId: { type: Schema.Types.ObjectId },
         evaluationType: { type: String, enum: ['ai', 'human'] },
@@ -31,7 +31,7 @@ const studentSpeakingAnswerSchema = new Schema(
         studentAttemptId: { type: Schema.Types.ObjectId },
         isPracticeMode: { type: Boolean, default: false }, // coming from testAttempId
         // Writing submission
-        mockTestId: { type: Schema.Types.ObjectId},
+        mockTestId: { type: Schema.Types.ObjectId },
         speakingAudios: [
             {
                 audioUrl: String,
@@ -135,5 +135,5 @@ const studentSpeakingAnswerSchema = new Schema(
     { timestamps: true }
 );
 
-const StudentSpeakingAnswer = mongoose.model('studentSpeakingAnswer', studentSpeakingAnswerSchema);
+const StudentSpeakingAnswer = mongoose.model('studentSpeakingAnswer', studentSpeakingAnswerSchema,'studentspeakinganswers');
 module.exports = StudentSpeakingAnswer;

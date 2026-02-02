@@ -387,6 +387,61 @@
                     grid-template-columns: 1fr;
                 }
             }
+
+            /* ================= PDF PRINT CONTROL (Avoid breaking sections) ================= */
+@media print {
+  body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Avoid splitting key blocks */
+  .section,
+  .result-segment-wrap,
+  .result-card,
+  .rubric-wrap,
+  .rubric-row,
+  .info-strip,
+  .header,
+  .report-footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Avoid splitting lists and tables */
+  ul, ol, li,
+  table, thead, tbody, tr, td, th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Remove shadows that can look odd in PDF */
+  .section,
+  .result-card {
+    box-shadow: none !important;
+  }
+
+  /* ===== RED FOOTER ON EVERY PAGE ===== */
+  .report-footer {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: var(--brand) !important;
+    color: #fff !important;
+    padding: 12px 18px !important;
+    z-index: 9999 !important;
+  }
+
+  /* Leave space so footer doesn't overlap content */
+  #reportRoot {
+    padding-bottom: 14mm !important;
+  }
+}
+
         </style>
     </head>
 
@@ -480,8 +535,6 @@
                         <% } %>
                     </div>
                 </div>
-
-                <div class="divider"></div>
 
                 <!-- Footer -->
                 <div class="report-footer" id="reportFooter">

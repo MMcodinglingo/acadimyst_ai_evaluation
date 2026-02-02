@@ -131,6 +131,12 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+#history
+.history
+
+#PDF Download folder
+.accessorfeedbackpdf/
+
 # yarn v2
 .yarn/cache
 .yarn/unplugged
