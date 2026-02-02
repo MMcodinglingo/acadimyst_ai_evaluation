@@ -134,6 +134,9 @@ dist
 #history
 .history
 
+#PDF Download folder
+.accessorfeedbackpdf/
+
 # yarn v2
 .yarn/cache
 .yarn/unplugged
