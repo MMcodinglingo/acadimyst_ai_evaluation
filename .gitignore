@@ -135,7 +135,7 @@ dist
 .history
 
 #PDF Download folder
-.accessorfeedbackpdf/
+accessorfeedbackpdf/
 
 # yarn v2
 .yarn/cache
