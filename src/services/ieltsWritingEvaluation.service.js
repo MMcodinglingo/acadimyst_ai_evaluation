@@ -25,14 +25,14 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
 
             // Skip if no text was submitted
             if (!task.writingText) {
-                winston.info(`⏭️ Skipping Task ${taskNumber} - no text submitted`);
+                winston.info(` Skipping Task ${taskNumber} - no text submitted`);
                 return { taskNumber, taskIndex, skipped: true };
             }
 
-            winston.info(`🔍 Starting AI evaluation for IELTS Task ${taskNumber}`);
+            winston.info(` Starting AI evaluation for IELTS Task ${taskNumber}`);
 
             // STEP 1: Extract question features
-            winston.info(`📋 Step 1: Extracting key features for Task ${taskNumber}...`);
+            winston.info(` Step 1: Extracting key features for Task ${taskNumber}...`);
 
             const extractPrompt =
                 taskNumber === 1
@@ -63,7 +63,7 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
             });
 
             // STEP 2: Assess student response
-            winston.info(`📝 Step 2: Assessing student response for Task ${taskNumber}...`);
+            winston.info(` Step 2: Assessing student response for Task ${taskNumber}...`);
 
             const assessPrompt =
                 taskNumber === 1
@@ -83,7 +83,7 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
 
             const assessmentReport = globalLibrary.safeJson(assessResponse.content);
             if (!assessmentReport) {
-                winston.error(`❌ Failed to assess Task ${taskNumber}. Invalid JSON response.`);
+                winston.error(` Failed to assess Task ${taskNumber}. Invalid JSON response.`);
                 throw new Error(`Invalid assessment JSON for Task ${taskNumber}`);
             }
 
@@ -92,7 +92,7 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
             const score = overallBand ? Math.round(overallBand * 10) : 0;
             const grade = overallBand || 0;
 
-            winston.info(`✅ Assessment complete for Task ${taskNumber}: Band ${overallBand}`);
+            winston.info(` Assessment complete for Task ${taskNumber}: Band ${overallBand}`);
 
             // Create plain text summary from structured feedback
             const plainFeedback = `IELTS Writing Task ${taskNumber} - AI Evaluation
@@ -131,7 +131,7 @@ ${assessmentReport.annotated_version || 'N/A'}`;
         };
 
         // PARALLEL TASK EVALUATION
-        winston.info(`🚀 Starting parallel evaluation for ${tasks.length} task(s)...`);
+        winston.info(` Starting parallel evaluation for ${tasks.length} task(s)...`);
 
         const evaluationResults = await Promise.allSettled(
             tasks.map((task, i) =>
@@ -247,7 +247,7 @@ ${t2?.plainFeedback || 'N/A'}`;
             winston.error('PDF generation failed:', err);
         }
 
-        // ✅ FINAL RETURN (DB-READY PAYLOAD)
+        //  FINAL RETURN (DB-READY PAYLOAD)
         return {
             studentWritingAnswer,
             student, // Include student for OpenAI logging
@@ -266,7 +266,7 @@ ${t2?.plainFeedback || 'N/A'}`;
         };
     } catch (err) {
         console.log(err);
-        winston.error('❌ Error in IELTS AI evaluation:', err);
+        winston.error(' Error in IELTS AI evaluation:', err);
         return null;
     }
 };
