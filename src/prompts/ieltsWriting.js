@@ -187,8 +187,8 @@ For ALL Task 1 responses:
 
 Word Count Rule (TEXT ONLY):
 - Do not output any boolean field for under length.
-- Mention word count ONLY inside the first sentence of the "summary" string, using this exact pattern:
-  "The total words of the student response is X, and it is under length/on target/over length."
+- Mention about underlength or of adequate length ONLY inside the first sentence of the "summary" string, using this exact pattern:
+  "The student response is is under length/of adequate length/over length."
 - Never write "Word count:" or "Under length:" anywhere.
 – Clearly explain how underlength limits the achievable band score.
 
@@ -386,8 +386,8 @@ For ALL Task 2 essays:
 
 Word Count Rule (TEXT ONLY):
 - Do not output any boolean field for under length.
-- Mention word count ONLY inside the first sentence of the "summary" string, using this exact pattern:
-  "The total words of the student response is X, and it is under length/on target/over length."
+- Mention about underlength or of adequate length ONLY inside the first sentence of the "summary" string, using this exact pattern:
+  "The student response is is under length/of adequate length/over length."
 - Never write "Word count:" or "Under length:" anywhere.
 – Clearly explain how underlength limits the achievable band score.
 

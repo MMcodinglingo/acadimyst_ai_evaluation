@@ -911,7 +911,7 @@ function buildTaskBlock(label, taskBlock) {
     s.push(section(`${label}: Overall Band`, toKVTable({ 'Overall Band': taskBlock.overall_band ?? '—' }, 'Item', 'Value')));
 
     // 2) Originality justification
-    s.push(section(`${label}: Originality Justification`, `<p>${escapeHtml(taskBlock.originality_justification || '—')}</p>`));
+    // s.push(section(`${label}: Originality Justification`, `<p>${escapeHtml(taskBlock.originality_justification || '—')}</p>`));
 
     // 3) Inline corrections
     if (taskBlock.annotated_version) {
