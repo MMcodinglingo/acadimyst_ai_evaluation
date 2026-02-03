@@ -22,15 +22,16 @@ const handleOetSpeakingEvaluation = async (req, res, next) => {
             },
         });
     } catch (error) {
+
         return res.status(status[500]).json(res, {
             success: 0,
-            message: 'Something went wrong. Please try again',
+            message: error?.message || 'Something went wrong. Please try again',
             data: {},
         });
     }
 };
 
-const handleOetWritingevaluation = async (req, res, next) => {
+const handleOetWritingEvaluation = async (req, res, next) => {
     try {
         const { testData, studentWritingAnswer, writingText, student, course } = req.body;
 
@@ -50,9 +51,10 @@ const handleOetWritingevaluation = async (req, res, next) => {
             },
         });
     } catch (error) {
-        return res.status(status[500]).json(res, {
+        console.log('Error in OET Writing Evaluation Controller:', error);
+        return res.status(status[500]).json({
             success: 0,
-            message: 'Something went wrong. Please try again',
+            message: error?.message ||  'Something went wrong. Please try again',
             data: {},
         });
     }
@@ -60,5 +62,5 @@ const handleOetWritingevaluation = async (req, res, next) => {
 
 module.exports = {
     handleOetSpeakingEvaluation,
-    handleOetWritingevaluation,
+    handleOetWritingEvaluation,
 };
