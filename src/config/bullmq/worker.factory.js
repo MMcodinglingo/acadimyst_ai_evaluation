@@ -19,6 +19,10 @@ let workerConfig = {
         enabled: true,
         concurrency: 10,
     },
+    oetWritingEvaluation: {
+        enabled: true,
+        concurrency: 10,
+    },
 };
 
 const defaultWorkerOptions = {
@@ -147,6 +151,11 @@ const initializeAllWorkers = () => {
         if (workerConfig.oetSpeakingEvaluation) {
             workers.ieltsWritingEvaluation = createWorker('oetSpeakingEvaluationQueue', oetSpeakingEvaluation, {
                 concurrency: workerConfig?.oetSpeakingEvaluation.concurrency || 15,
+            });
+        }
+        if (workerConfig.oetWritingEvaluation) {
+            workers.ieltsWritingEvaluation = createWorker('oetWritingEvaluationQueue', oetSpeakingEvaluation, {
+                concurrency: workerConfig?.oetWritingEvaluation.concurrency || 15,
             });
         }
 

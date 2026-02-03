@@ -12,6 +12,7 @@ const handleOetWritingEvaluation = async ({ studentWritingAnswer, student, testD
     let finalWritingText = writingText;
 
     //  NEW LOGIC - Process all images if multiple pages
+
     if (studentWritingAnswer.isPictureBased) {
         const images = studentWritingAnswer.writingImage || [];
         const totalPages = images.length;
@@ -71,8 +72,28 @@ const handleOetWritingEvaluation = async ({ studentWritingAnswer, student, testD
             }
 
             return {
-                pdfUrl,
-                generatedHtml,
+                studentWritingAnswer,
+                student,
+                evaluationResult: {
+                    writingText: finalWritingText,
+                    pdfUrl,
+                    checkingStatus: 'checked',
+                    score: writingMarks,
+                    grade: writingGrade,
+                    lastEvaluatedAt: new Date(),
+                    // evaluatorId: accessorData?.writingAccessor,
+                    aiFeedBack: writingFeedback?.content,
+                    aiFeedBackHtml: generatedHtml,
+                    accessorFeedBackHtml: generatedHtml,
+                    scoreHistory: {
+                        score: writingMarks,
+                        grade: writingGrade,
+                        evaluatedAt: new Date(),
+                        evaluationType: 'ai',
+                        note: '',
+                    },
+                },
+                writingFeedback,
             };
         } else {
             console.log('Some thing went wrong while processing writing feedback');
