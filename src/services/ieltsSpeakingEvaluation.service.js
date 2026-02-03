@@ -35,6 +35,7 @@ async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingPa
         const qaPairs = [];
         const questionMetaById = {}; // questionId -> { speakingPartId, subQuestionNumber }
 
+        console.log(' ~ handleIeltsSpeakingEvaluation ~ speakingParts:', speakingParts);
         if (!speakingParts || speakingParts.length === 0) {
             winston.error('No IELTS speaking parts found for this test.');
             return;
@@ -227,7 +228,6 @@ async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingPa
             },
             required: ['task_relevance', 'scores', 'summary', 'strengths', 'areas_of_improvement', 'actionable_feedback'],
         };
-
 
         const systemPrompt = buildSystemPrompt();
         /* ----------------------------- Model call ----------------------------- */
@@ -485,6 +485,7 @@ Note: One or more answers were off-topic for their questions, which reduced the 
 
         let fileName = `feedback_${Date.now()}.pdf`;
         let pdfResp = await htmlToPdf.generatePDF(speakingHtml, studentSpeakingAnswer?._id, fileName);
+        console.log(' ~ handleIeltsSpeakingEvaluation ~ pdfResp:', pdfResp);
 
         // ============= BUILD PLAIN TEXT FEEDBACK =============
         const plainFeedback = `
@@ -517,7 +518,7 @@ ${report.actionable_feedback || '—'}
             studentSpeakingAnswer,
             student,
             evaluationResult: {
-                pdfUrl: { pdfUrl: pdfResp.s3Url, key: pdfResp.key },
+                pdfUrl: { pdfUrl: pdfResp?.s3Url || null, key: pdfResp?.key || null, localPath: pdfResp?.localPath || null, },
                 partWiseScores,
                 avgBand: avgBandStr,
                 checkingStatus: 'checked',
@@ -548,6 +549,7 @@ ${report.actionable_feedback || '—'}
         };
     } catch (err) {
         winston.error('Error in IELTS speaking evaluation:', err);
+        throw err;
     }
 }
 

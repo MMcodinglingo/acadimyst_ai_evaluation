@@ -37,10 +37,10 @@ async function generatePDF(html, writingAnswerId, fileName) {
             format: 'A4',
             printBackground: true,
 
-            // ✅ must be TRUE to show footer on every page
+            //  must be TRUE to show footer on every page
             displayHeaderFooter: false,
 
-            // ✅ reserve space for footer
+            //  reserve space for footer
             margin: {
                 top: '15mm',
                 right: '12mm',
@@ -49,7 +49,7 @@ async function generatePDF(html, writingAnswerId, fileName) {
             },
 
 
-            // ✅ RED footer on every page
+            //  RED footer on every page
             footerTemplate: `
     <div style="width:100%; padding:0 12mm;">
       <div style="
@@ -85,6 +85,7 @@ async function generatePDF(html, writingAnswerId, fileName) {
         // }
 
         winston.info(`PDF generated successfully at ${pdfPath}`);
+        return { localPath: pdfPath };
         // return resp;
     } catch (err) {
         console.log(err);
@@ -126,6 +127,7 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
             sectionsHtml: processedData.sectionsHtml,
             rubricHtml: processedData.rubricHtml,
         };
+            console.log(' ~ generateIeltsWritingPdf ~ templateData.sectionsHtml:', templateData.sectionsHtml);
 
         // 5. Render EJS template
         winston.info('Rendering IELTS EJS template...');

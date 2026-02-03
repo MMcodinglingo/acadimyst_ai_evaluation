@@ -936,14 +936,17 @@ function buildTaskBlock(label, taskBlock) {
         s.push(section(`${label}: Inline Corrections`, "<p class='muted'>—</p>"));
     }
 
-    // 4) Summary
-    s.push(section(`${label}: Summary`, `<p>${escapeHtml(taskBlock.summary || '—')}</p>`));
+    // // 4) Summary
+    // s.push(section(`${label}: Summary`, `<p>${escapeHtml(taskBlock.summary || '—')}</p>`));
 
-    // 5) Strengths
-    s.push(section(`${label}: Strengths`, `<p>${escapeHtml(taskBlock.strength || '—')}</p>`));
+    // // 5) Strengths
+    // s.push(section(`${label}: Strengths`, `<p>${escapeHtml(taskBlock.strength || '—')}</p>`));
 
-    // 6) Areas of improvement
-    s.push(section(`${label}: Areas Of Improvement`, `<p>${escapeHtml(taskBlock.areas_of_improvement || '—')}</p>`));
+    // // 6) Areas of improvement
+    // s.push(section(`${label}: Areas Of Improvement`, `<p>${escapeHtml(taskBlock.areas_of_improvement || '—')}</p>`));
+
+    // 7) Examiner Feedback
+    s.push(section(`${label}: Examiner Feedback`, `<p>${escapeHtml(taskBlock.examiner_feedback || '—')}</p>`));
 
     return s;
 }

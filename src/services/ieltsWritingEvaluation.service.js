@@ -99,6 +99,7 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
 
 Overall Band: ${overallBand}
 
+
 === ORIGINALITY CHECK ===
 ${assessmentReport.originality_justification || 'N/A'}
 
@@ -112,7 +113,13 @@ ${assessmentReport.strength || 'N/A'}
 ${assessmentReport.areas_of_improvement || 'N/A'}
 
 === ANNOTATED VERSION ===
-${assessmentReport.annotated_version || 'N/A'}`;
+${assessmentReport.annotated_version || 'N/A'}
+
+===== Examiner Feedback (Full) =====
+${assessmentReport.examiner_feedback || 'N/A'}
+`;
+
+ 
 
             return {
                 taskNumber,
