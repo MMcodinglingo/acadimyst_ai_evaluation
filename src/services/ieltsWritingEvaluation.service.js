@@ -227,7 +227,7 @@ ${assessmentReport.annotated_version || 'N/A'}`;
         // OVERALL SCORE
         const validScores = tasksResult.filter((t) => !t.skipped && typeof t.score === 'number').map((t) => t.score);
         const overallScore = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null;
-        let overallGrade = overallScore ? overallGrade / 10 : null;
+        let overallGrade = overallScore ? overallScore / 10 : null;
         // PDF GENERATION
         let pdf = null;
         let combinedPlainFeedback = '';
