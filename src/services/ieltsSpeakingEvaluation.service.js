@@ -35,7 +35,6 @@ async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingPa
         const qaPairs = [];
         const questionMetaById = {}; // questionId -> { speakingPartId, subQuestionNumber }
 
-        console.log(' ~ handleIeltsSpeakingEvaluation ~ speakingParts:', speakingParts);
         if (!speakingParts || speakingParts.length === 0) {
             winston.error('No IELTS speaking parts found for this test.');
             return;
@@ -221,12 +220,9 @@ async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingPa
                     items: taskRelevanceItemSchema,
                 },
                 scores: scoresSchema,
-                summary: { type: 'string' },
-                strengths: { type: 'string' },
-                areas_of_improvement: { type: 'string' },
-                actionable_feedback: { type: 'string' },
+                examiner_feedback: { type: 'string' },
             },
-            required: ['task_relevance', 'scores', 'summary', 'strengths', 'areas_of_improvement', 'actionable_feedback'],
+            required: ['task_relevance', 'scores', 'examiner_feedback'],
         };
 
         const systemPrompt = buildSystemPrompt();
@@ -372,61 +368,39 @@ async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingPa
             report.scores = computeOverallFromTasks(report.task_relevance);
 
             // keep full paragraphs, preserve newlines
-            report.summary = String(report.summary ?? '').trim();
-            report.strengths = String(report.strengths ?? '').trim();
-            report.areas_of_improvement = String(report.areas_of_improvement ?? '').trim();
-            report.actionable_feedback = String(report.actionable_feedback ?? '').trim();
+            report.examiner_feedback = String(report.examiner_feedback || '').trim();
 
-            // 4) If ALL tasks mismatched -> force overall 0 and special summary
+            // 4) If ALL tasks mismatched -> force overall 0 and special examiner feedback
             if (totalTasks > 0 && mismatches.length === totalTasks) {
                 winston.warn('ALL tasks mismatched - setting scores to 0');
                 report.scores = forceZeroScoresObj();
 
                 const allDetail = buildMismatchDetail(mismatches, qaPairsForScoring);
 
-                report.summary = `All uploaded audios are mismatched with their mapped questions, so the overall score is 0.
-Please answer each question directly according to its task.
+                report.examiner_feedback = `All uploaded audios are mismatched with their questions, so the overall score is 0.
+Please answer each question directly according to its task.Re-record each answer while reading the question first, provide relevant answer, keep the same topic and avoid switching to unrelated ideas.
 
 Mismatched: ${allDetail}`.trim();
 
-                report.strengths = '';
-
-                report.areas_of_improvement = `All responses are not aligned with the questions.
-Focus on understanding each prompt, giving a direct answer first, then adding 1–2 supporting details or examples.
-
-Mismatched: ${allDetail}`.trim();
-
-                report.actionable_feedback =
-                    'Re-record each answer while reading the exact question first, give a direct 1-sentence answer, then add 2 supporting sentences; keep the same topic and avoid switching to unrelated ideas.';
             } else if (mismatches.length > 0) {
                 winston.warn(`${mismatches.length} tasks mismatched - adjusting feedback`);
                 const detail = buildMismatchDetail(mismatches, qaPairsForScoring);
 
                 // Only append if the model didn't already mention mismatch
-                const summaryHas = hasMismatchAlready(report.summary, mismatches);
-                const areasHas = hasMismatchAlready(report.areas_of_improvement, mismatches);
+                const alreadyMentions = hasMismatchAlready(report.examiner_feedback, mismatches);
 
-                // Pick ONE place to add it (recommended: areas_of_improvement only)
-                if (!areasHas) {
-                    report.areas_of_improvement = `${String(report.areas_of_improvement ?? '').trim()}
+                // Pick ONE place to add it (recommended: examiner feedback only)
+                if (!alreadyMentions) {
+                    report.examiner_feedback = `${String(report.examiner_feedback ?? '').trim()}
 
-Task alignment issue: some answers did not match their mapped questions, which lowered the overall score.
+Task alignment issue: some answers did not match their questions, which lowered the overall score.
 Mismatches: ${detail}`.trim();
                 }
 
-                // Do NOT duplicate in summary if summary already contains mismatch explanation
-                if (!summaryHas && areasHas) {
-                    report.summary = `${String(report.summary ?? '').trim()}
-
-Note: One or more answers were off-topic for their questions, which reduced the overall score.`.trim();
-                }
             }
 
             // 6) Ensure required strings exist (schema safety)
-            report.summary = String(report.summary ?? '');
-            report.strengths = String(report.strengths ?? '');
-            report.areas_of_improvement = String(report.areas_of_improvement ?? '');
-            report.actionable_feedback = String(report.actionable_feedback ?? '');
+            report.examiner_feedback = String(report.examiner_feedback ?? '');
         }
 
         // ============= BUILD partWiseScores FROM task_relevance =============
@@ -457,6 +431,18 @@ Note: One or more answers were off-topic for their questions, which reduced the 
             year: 'numeric',
         });
 
+        // helper function to bold the response 
+        function boldStarsToHtml(text = '') {
+  return String(text)
+    // escape HTML first to avoid injection
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // then convert *something* to bold
+    .replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+}
+
+
         const templateData = {
             studentName: student.fullName || student.firstName || 'Student',
             moduleName: 'IELTS Speaking',
@@ -468,10 +454,7 @@ Note: One or more answers were off-topic for their questions, which reduced the 
                 pronunciation: clampBand(report.scores.pronunciation),
                 overall_band: clampBand(report.scores.overall_band),
             },
-            summary: report.summary || '—',
-            strengths: report.strengths || '—',
-            areas_of_improvement: report.areas_of_improvement || '—',
-            actionable_feedback: report.actionable_feedback || '—',
+            examiner_feedback: boldStarsToHtml(report.examiner_feedback || '-'),
         };
 
         winston.info('Rendering EJS template for IELTS speaking report...');
@@ -485,7 +468,6 @@ Note: One or more answers were off-topic for their questions, which reduced the 
 
         let fileName = `feedback_${Date.now()}.pdf`;
         let pdfResp = await htmlToPdf.generatePDF(speakingHtml, studentSpeakingAnswer?._id, fileName);
-        console.log(' ~ handleIeltsSpeakingEvaluation ~ pdfResp:', pdfResp);
 
         // ============= BUILD PLAIN TEXT FEEDBACK =============
         const plainFeedback = `
@@ -501,17 +483,8 @@ Grammatical Range & Accuracy: ${clampBand(report.scores.grammatical_range_accura
 Pronunciation: ${clampBand(report.scores.pronunciation)}
 Overall Band: ${clampBand(report.scores.overall_band)}
 
---- SUMMARY ---
-${report.summary || '—'}
-
---- STRENGTHS ---
-${report.strengths || '—'}
-
---- AREAS OF IMPROVEMENT ---
-${report.areas_of_improvement || '—'}
-
---- ACTIONABLE FEEDBACK ---
-${report.actionable_feedback || '—'}
+--- Examiner's Feedback ---
+${report.examiner_feedback || '-'}
 `.trim();
 
         return {
@@ -538,10 +511,7 @@ ${report.actionable_feedback || '—'}
                 aiEvaluationReport: {
                     task_relevance: report.task_relevance,
                     scores: report.scores,
-                    summary: report.summary,
-                    strengths: report.strengths,
-                    areas_of_improvement: report.areas_of_improvement,
-                    actionable_feedback: report.actionable_feedback,
+                    examiner_feedback: report.examiner_feedback,
                     tokenUsage: usage,
                     generatedAt: new Date(),
                 },

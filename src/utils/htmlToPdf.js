@@ -127,7 +127,6 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
             sectionsHtml: processedData.sectionsHtml,
             rubricHtml: processedData.rubricHtml,
         };
-            console.log(' ~ generateIeltsWritingPdf ~ templateData.sectionsHtml:', templateData.sectionsHtml);
 
         // 5. Render EJS template
         winston.info('Rendering IELTS EJS template...');

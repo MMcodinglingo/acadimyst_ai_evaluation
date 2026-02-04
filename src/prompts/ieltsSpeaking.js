@@ -4,10 +4,7 @@ IMPORTANT OUTPUT STRUCTURE (MUST FOLLOW):
 Return JSON with these keys exactly:
 - task_relevance: array (one item per qaPair)
 - scores
-- summary
-- strengths
-- areas_of_improvement
-- actionable_feedback
+-examiner_feedback
 
 RELEVANCE GATE (MANDATORY PER TASK):
 For EACH qaPair, decide if the answer matches the question.
@@ -17,11 +14,12 @@ task_key, questionNumber,partNumber, order, relevance ("RELATED"/"NOT_RELATED"),
 question_is_about (5–12 words), answer_is_about (5–12 words),
 and scores object.
 questionNumber MUST be copied from the provided qaPairs.questionNumber for that task (do not invent).
+Do not mention question like P3-C7 etc for mismatch or not related. Must write full part and question number. like Part 3 Question 7.
 
 
 TASK-LEVEL RULES:
 If relevance = "NOT_RELATED":
-- scores for THAT TASK MUST ALL be 0 (all 5 score fields).
+- scores for THAT TASK MUST ALL be 0 (all 4 score fields).
 - Do NOT evaluate language quality for that task.
 - Do NOT give task-level feedback beyond the required fields.
 
@@ -32,24 +30,23 @@ GLOBAL REPORT RULES (VERY IMPORTANT):
 
 1) If ALL tasks are marked NOT_RELATED:
 - overall scores MUST be 0 for all criteria.
-- summary MUST clearly state that all uploaded answers were mismatched with their questions.
-- strengths MUST be empty or neutral (do NOT invent strengths).
-- areas_of_improvement MUST explain that answers must address the correct questions before language can be assessed.
-- actionable_feedback MUST focus only on understanding and answering the task correctly.
+- examiner_feedback MUST clearly state that all uploaded answers were empty or mismatched with their questions accordingly.
+- examiner_feedback MUST explain that answers must address the correct questions before language can be assessed.
+- examiner_feedback MUST focus only on understanding and answering the task correctly.
 - Do NOT generate normal language evaluation.
 
 2) If SOME tasks are RELATED and SOME are NOT_RELATED:
 - overall scores MUST be computed including 0 scores for mismatched tasks.
-- summary MUST mention that some answers were mismatched and negatively affected the score and mentioned the topic of question and candidate answer.
-- areas_of_improvement MUST explicitly mention the mismatched task_keys and explain the impact and also mentioned the topic of question and candidate answer.
-- strengths MUST be based ONLY on the RELATED tasks.
-- actionable_feedback MUST include advice on answering the correct question before speaking.
+- examiner_feedback MUST mention that some answers were mismatched and negatively affected the score and mentioned the topic of question and candidate answer.
+- examiner_feedback MUST explicitly mention the mismatched task_keys and explain the impact and also mentioned the topic of question and candidate answer.
+- examiner_feedback MUST include advice on answering the correct question before speaking.
 
 3) If NO tasks are NOT_RELATED:
 - Generate a normal IELTS speaking report with no mention of mismatch.
 
 IMPORTANT:
 - Never hide mismatched answers.
+- Never hide empty transcripts.
 - Never ignore mismatched answers in scoring.
 - Never invent language assessment for a NOT_RELATED answer.
 `.trim();
@@ -80,8 +77,6 @@ Use answerTranscript_verbatim mainly for Fluency & Coherence assessment (hesitat
 Use answerTranscript_clean mainly for Lexical Resource and Grammatical Range & Accuracy assessment.
 
 Use both transcripts when judging Pronunciation.
-
-Do NOT infer pronunciation problems purely from transcript limitations or LLM artefacts.
 
 TEST STRUCTURE RULES
 
@@ -344,10 +339,70 @@ Return JSON in this exact structure:
     "pronunciation": 0.0,
     "overall_band": 0.0
   },
-  "summary": "This paragraph should summarise the overall speaking performance in 6–8 lines by first commenting on fluency and coherence (length of responses, hesitation, repetition, pauses with evidences, fillers used by the candidate, and logical flow), then grammatical range and accuracy (sentence variety, tense control, recurring errors), followed by lexical resource (range, precision, repetition, collocations), and finally pronunciation (overall clarity, stress, intonation, and rhythm), without using headings or bullet points. Also Tell about the mismatched question and answer if there were any and tell me what was question about and what candidate answer was.",
-  "strengths": "This paragraph should highlight the candidate's main strengths in 5–7 lines with clear evidence from the transcripts, starting with fluency and coherence, followed by grammatical range and accuracy, lexical resource, and ending with pronunciation, written as one continuous paragraph without subheadings.",
-  "areas_of_improvement": "This paragraph should explain the key areas for improvement in 8–10 lines with direct transcript evidence and brief corrections, beginning with fluency and coherence (e.g., false starts like 'I was… I mean…' → 'I was', fillers such as 'uh', 'uhm'), followed by grammatical range and accuracy, then lexical resource, and finally pronunciation, all in one paragraph without headings.Also Tell about the mismatched question and answer if there were any and tell me what was question about and what candidate answer was.",
-  "actionable_feedback": "This paragraph should provide clear, practical advice in 3–4 lines suited to the candidate's current level, focusing on planning ideas before speaking, finishing sentences, consolidating common grammar patterns, expanding topic-related vocabulary with correct collocations, and improving pronunciation through controlled pacing, clearer stress, and confident intonation, without mentioning specific band scores."
+"examiner_feedback":
+Write ONE continuous feedback text consisting of exactly FOUR paragraphs in the following fixed order:
+
+1) Fluency and Coherence  
+2) Grammatical Range and Accuracy  
+3) Lexical Resource (Vocabulary)  
+4) Pronunciation  
+
+Each paragraph MUST begin with the FULL FIRST WORD in bold, using the same star-based format, as follows:
+
+*Fluency* for the first paragraph,
+*Grammar* for the second paragraph,
+*Lexical* for the third paragraph,
+*Pronunciation* for the fourth paragraph.
+For example:
+*Fluency* and coherence…
+*Grammar* range and accuracy…
+*Lexical* resource…
+*Pronunciation* features…
+
+
+Inside EACH paragraph, write the content in the same internal sequence:
+
+- first give a short summary of performance for this criterion,  
+- then clearly mention the candidate’s strengths with direct evidence from the transcripts,  
+- then explain the main weaknesses / areas of improvement with direct evidence,  
+- and finally include brief improvement advice related only to this criterion.
+
+The order inside every paragraph must always be:
+summary → strengths → weaknesses → short advice.
+
+Important writing rules:
+
+- Use clear evidence from the candidate’s transcripts.
+- When giving an example of a mistake taken from the student’s response, the incorrect part MUST be written inside double quotes.
+  Example format:
+  "I was go to market yesterday"
+- Immediately after the mistake, write the corrected version in bold using this format:
+  *I went to the market yesterday*
+- Do NOT use bullet points or headings.
+- Do NOT mention band scores.
+- Do NOT overpraise.
+- Write in a natural examiner tone (professional but conversational).
+- Use simple and clear vocabulary so students can easily understand.
+
+Fluency and Coherence paragraph must comment on:
+length of responses, hesitation, repetition, pauses, fillers (such as “uh”, “um”), false starts, self-corrections, and logical flow of ideas.
+
+Grammatical Range and Accuracy paragraph must comment on:
+sentence variety, tense control, subject–verb agreement, and recurring grammar errors.
+
+Lexical Resource paragraph must comment on:
+range of vocabulary, repetition, word choice accuracy, topic-related vocabulary, and collocations.
+
+Pronunciation paragraph must comment on:
+overall clarity, individual sounds where relevant, word stress, sentence stress, intonation and rhythm.
+
+If any answers were mismatched with their questions, this must be clearly mentioned in the relevant paragraph(s).
+You must explicitly state:
+what the question was about and what the candidate’s answer was about.
+
+Do not separate mismatch information into a separate paragraph.
+Integrate it naturally into the relevant criterion paragraph(s).
+
 }
 `.trim();
 }

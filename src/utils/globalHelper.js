@@ -897,6 +897,31 @@ function markdownFixesToHtml(raw) {
     });
     return withBold.replace(/\n/g, '<br/>');
 }
+
+/* Helpers function for ielts writing */
+
+function allowStrongDelOnly(s) {
+  const escaped = escapeHtml(s);
+  return escaped
+    .replaceAll('&lt;strong&gt;', '<strong>')
+    .replaceAll('&lt;/strong&gt;', '</strong>')
+    .replaceAll('&lt;del&gt;', '<del>')
+    .replaceAll('&lt;/del&gt;', '</del>');
+}
+
+function paragraphsToHtmlSafe(text) {
+  const safe = allowStrongDelOnly(text);
+  return safe
+    .split(/\n\s*\n/g)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => `<p class="fbp">${p}</p>`)
+    .join('');
+}
+
+
+
+
 /**
  * Build task block sections for a single IELTS task
  * @param {String} label - Task label (e.g., "Task 1", "Task 2")
@@ -936,17 +961,8 @@ function buildTaskBlock(label, taskBlock) {
         s.push(section(`${label}: Inline Corrections`, "<p class='muted'>—</p>"));
     }
 
-    // // 4) Summary
-    // s.push(section(`${label}: Summary`, `<p>${escapeHtml(taskBlock.summary || '—')}</p>`));
-
-    // // 5) Strengths
-    // s.push(section(`${label}: Strengths`, `<p>${escapeHtml(taskBlock.strength || '—')}</p>`));
-
-    // // 6) Areas of improvement
-    // s.push(section(`${label}: Areas Of Improvement`, `<p>${escapeHtml(taskBlock.areas_of_improvement || '—')}</p>`));
-
     // 7) Examiner Feedback
-    s.push(section(`${label}: Examiner Feedback`, `<p>${escapeHtml(taskBlock.examiner_feedback || '—')}</p>`));
+    s.push(section(`${label}: Examiner Feedback`, `<div class = "feedback">${paragraphsToHtmlSafe(taskBlock.examiner_feedback || '—')}</div>`));
 
     return s;
 }

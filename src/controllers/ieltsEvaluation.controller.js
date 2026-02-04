@@ -4,7 +4,6 @@ const ieltsSpeakingEvaluationService = require('../services/ieltsSpeakingEvaluat
 const handleIeltsWritingEvaluation = async (req, res, next) => {
     try {
         const { studentWritingAnswer, testData, tasks, student } = req.body;
-        console.log(' ~ handleIeltsWritingEvaluation ~ studentWritingAnswer:', studentWritingAnswer);
 
         let resp = await ieltsEvaluationService.handleIeltsWritingAiEvaluation({ studentWritingAnswer, student, testData, tasks });
 
@@ -17,7 +16,6 @@ const handleIeltsWritingEvaluation = async (req, res, next) => {
             },
         });
     } catch (error) {
-        console.log('Error in IELTS Writing Evaluation Controller:', error);
         return res.status(500).json({
             success: 0,
             message: error?.message || 'Something went wrong. Please try again',
