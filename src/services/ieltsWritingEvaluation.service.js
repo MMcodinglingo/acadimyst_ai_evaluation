@@ -157,6 +157,7 @@ ${assessmentReport.examiner_feedback || 'N/A'}
         for (const res of evaluationResults) {
             if (res.status === 'fulfilled' && res.value && !res.value.error) {
                 const r = res.value;
+                r.checkingStatus = 'checked';
                 tasksResult.push(r);
 
                 if (!r.skipped) {
@@ -199,12 +200,41 @@ ${assessmentReport.examiner_feedback || 'N/A'}
                     rounded_writing_band: rounded,
                 };
             }
+        } else {
+            let isTask1 = taskReports.task1 ? true : false;
+            let isTask2 = taskReports.task2 ? true : false;
+            const taskBand = isTask1
+                ? globalLibrary.getOverallBandFromReport(taskReports.task1)
+                : globalLibrary.getOverallBandFromReport(taskReports.task2);
+            const rounded = globalLibrary.roundToHalfBand(taskBand);
+
+            const combinedPrompt = finalCombinedReportPrompt({
+                task1Report: isTask1 ? taskReports.task1 : null,
+                task2Report: isTask2 ? taskReports.task2 : null,
+                rounded,
+            });
+            const combinedResponse = await generateIeltsWritingEvaluation({
+                instructions: combinedPrompt.instructions,
+                input: combinedPrompt.input,
+            });
+            finalReport = globalLibrary.safeJson(combinedResponse.content);
+
+            if (finalReport) {
+                finalReport.final_summary = {
+                    ...(finalReport.final_summary || {}),
+                    Overall_writing_band: rounded,
+                    task1_band: isTask1 ? taskBand : null,
+                    task2_band: isTask2 ? taskBand : null,
+                    weighted_estimated_writing_band: taskBand,
+                    rounded_writing_band: rounded,
+                };
+            }
         }
 
         // OVERALL SCORE
         const validScores = tasksResult.filter((t) => !t.skipped && typeof t.score === 'number').map((t) => t.score);
         const overallScore = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null;
-
+        let overallGrade = overallScore ? overallScore / 10 : null;
         // PDF GENERATION
         let pdf = null;
         let combinedPlainFeedback = '';
@@ -264,7 +294,8 @@ ${t2?.plainFeedback || 'N/A'}`;
                 combinedReport: finalReport,
                 overall: {
                     overallScore,
-                    overallCheckingStatus: tasksResult.every((t) => t.skipped || t.grade) ? 'complete' : 'partial',
+                    overallGrade,
+                    overallCheckingStatus: tasksResult.every((t) => t.checkingStatus === 'checked') ? 'complete' : 'partial',
                     lastEvaluatedAt: new Date(),
                 },
                 pdf,

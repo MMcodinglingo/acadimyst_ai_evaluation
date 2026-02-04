@@ -29,7 +29,8 @@
     "morgan": "^1.10.1",
     "openai": "^6.16.0",
     "puppeteer": "^24.36.1",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

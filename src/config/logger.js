@@ -1,52 +1,34 @@
-const winston = require('winston');
+'use strict';
 
-const levels = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  http: 3,
-  debug: 4,
-};
+let winston = require('winston');
 
-const level = () => {
-  const env = process.env.NODE_ENV || 'development';
-  const isDevelopment = env === 'development';
-  return isDevelopment ? 'debug' : 'warn';
-};
+const options = (winston.LoggerOptions = {
+    format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.errors({ stack: true }),
+        winston.format.colorize(),
+        winston.format.splat(),
+        winston.format.printf(({ timestamp, level, label, message, stack, ...metadata }) => {
+            const namespace = label ? `(${label})` : '';
+            const errStack = stack ? `\n${stack}` : '';
 
-const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'white',
-};
+            // Format metadata (objects) properly
+            let metadataStr = '';
+            if (Object.keys(metadata).length > 0) {
+                metadataStr = '\n' + JSON.stringify(metadata, null, 2);
+            }
 
-winston.addColors(colors);
-
-const format = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-  winston.format.colorize({ all: true }),
-  winston.format.printf(
-    (info) => `${info.timestamp} ${info.level}: ${info.message}`,
-  ),
-);
-
-const transports = [
-  new winston.transports.Console(),
-  new winston.transports.File({
-    filename: 'logs/error.log',
-    level: 'error',
-    format: winston.format.uncolorize(), // File logs shouldn't contain color codes
-  }),
-  new winston.transports.File({ filename: 'logs/all.log' }),
-];
-
-const logger = winston.createLogger({
-  level: level(),
-  levels,
-  format,
-  transports,
+            return `[${timestamp}] ${level}: ${namespace} ${message} ${metadataStr}${errStack}`;
+        })
+    ),
+    transports: [
+        //  new winston.transports.Console({ level: process.env.NODE_ENV === 'production' ? 'error' : 'debug' }),
+        new winston.transports.Console({ level: process.env.NODE_ENV === 'production' ? 'debug' : 'debug' }),
+        new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+        new winston.transports.File({ filename: 'logs/debug.log', level: 'debug' }),
+    ],
 });
+
+const logger = winston.createLogger(options);
 
 module.exports = logger;

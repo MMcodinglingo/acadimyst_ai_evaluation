@@ -61,6 +61,18 @@ const queueConfigs = {
             },
         },
     },
+    updateOetWritingDB: {
+        name: 'updateOetWritingDBQueue',
+        description: 'When oet writing is evaluated after that it will return the result to main service to update the data in db.',
+        options: {
+            ...defaultQueueOptions,
+            defaultJobOptions: {
+                ...defaultQueueOptions.defaultJobOptions,
+                attempts: 3,
+                timeout: 30000,
+            },
+        },
+    },
 };
 
 const createQueue = (queueKey, customOptions = {}) => {
