@@ -518,7 +518,7 @@ ${report.actionable_feedback || '—'}
             studentSpeakingAnswer,
             student,
             evaluationResult: {
-                pdfUrl: { pdfUrl: pdfResp?.s3Url || null, key: pdfResp?.key || null, localPath: pdfResp?.localPath || null, },
+                pdfUrl: { pdfUrl: pdfResp?.s3Url || null, key: pdfResp?.key || null, localPath: pdfResp?.localPath || null },
                 partWiseScores,
                 avgBand: avgBandStr,
                 checkingStatus: 'checked',
