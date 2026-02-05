@@ -3,17 +3,20 @@
  * Analyzes IELTS Task 1 question to identify key features
  */
 
-function task1ExtractPrompt({ questionText, extraText }) {
-    return {
-        instructions: `
-You are an IELTS Writing Task 1 examiner and data summarization expert.
+function task1ExtractPrompt({ questionText, instructionsText, imageURL }) {
+  return {
+    instructions: `
+You are an IELTS Writing Task 1 examiner and visual-data summarization expert.
 
-Goal:
-Extract ONLY the key features and relevant information that must appear in a high-band Task 1 answer.
+You will receive:
+1) The Task 1 prompt text
+2) A visual (map/chart/process/table) as an IMAGE
+
+Extract ONLY the key features that a high-band answer must include.
 
 Rules:
 - Be factual and neutral.
-- No opinions, no causes/reasons unless the prompt explicitly asks.
+- Do not invent details not visible in the visual.
 - Output STRICT JSON only (no markdown).
 
 JSON schema:
@@ -27,14 +30,21 @@ JSON schema:
   "common_mistakes_to_avoid": ["..."]
 }
 `.trim(),
-        input: `TASK 1 QUESTION / VISUAL TEXT (if any):
-${questionText}
 
-EXTRA EXTRACTED TEXT (from PDF/DOCX/text paste):
-${extraText}
-`,
-    };
+    //  multimodal input
+    input: [
+      {
+        type: 'text',
+        text: `TASK 1 Question Text:\n${questionText}\n\nINSTRUCTIONS:\n${instructionsText || ''}`,
+      },
+      {
+        type: 'image_url',
+        image_url: { url : imageURL },
+      },
+    ],
+  };
 }
+
 /**
  * STEP 3: Task 2 Extract Prompt
  * Analyzes IELTS Task 2 question to identify requirements
@@ -86,6 +96,10 @@ function task1AssessPrompt({ task1KeyJson, studentResponse }) {
 IELTS Writing Examiner Prompt – Task 1 (Academic & General Training)
 
 You are an IELTS examiner. Assess IELTS Writing Task 1 strictly in accordance with official British Council / IELTS band descriptors.
+#Important 
+If whole student response or pasted text is not in english then it should not processed it for lexiacal, task response , grammer and coherence criteria and in examiner feedback write accoringly that the candidate response is not in english.
+if there are some words in any other language than english but mostly the student response is in english then it should mention those words in examiner feedback in areas of improvement that the student response has words other than english like ..... give evidene and their corrections in english.
+if student use some words of enlgish but mostly response has other language then english then it should not process it for lexiacal, task response , grammer and coherence criteria etc and tell in examiner feedback accrodingly. 
 
 CRITICAL FORMAT BAN:
 - Do NOT use criterion labels or headings inside the strings.
@@ -320,12 +334,12 @@ PARAGRAPH 4 (COHERENCE & COHESION PERSPECTIVE):
 - Internal sequence inside paragraph 4 must be:
   (a) brief overall comment on how ideas are organized and linked,
   (b) strengths in progression and linking (with evidence),
-  (c) weaknesses like unclear references, weak paragraphing, or mechanical linking (with evidence), using: "the candidate wrote X; this should be Y" if applicable.
+  (c) weaknesses like unclear references, weak paragraphing,(with evidence), using: "the candidate wrote X; this should be Y" if applicable.
 - MUST evaluate sentence-to-sentence linking (how each sentence connects to the next).
 - MUST evaluate paragraph-level unity and progression (topic sentence → development → wrap-up).
 - MUST detect redundancy: if one sentence already completes an idea, do NOT allow unnecessary repetition or restatement; explicitly mention redundancy ONCE (no repetition across paragraphs).
 - MUST comment on referencing clarity (this/it/they) and whether the reader can follow “who/what” each pronoun refers to.
-- Mention whether linking devices are natural vs mechanical (however, moreover, etc.) and whether transitions feel forced.
+- Mention whether linking devices are natural vs Unnatural or repititive (however, moreover, etc.) and whether transitions feel forced.
 - Do NOT repeat any cohesion point elsewhere.
 
 FORMATTING REQUIREMENTS (EXAMINER_FEEDBACK ONLY):
@@ -394,6 +408,11 @@ function task2AssessPrompt({ task2KeyJson, studentResponse }) {
 IELTS Writing Examiner Prompt – Task 2 (Academic & General Training Essay)
 
 You are an IELTS examiner. Assess IELTS Writing Task 2 strictly in accordance with official British Council / IELTS band descriptors.
+
+#Important 
+If whole student response or pasted text is not in english then it should not processed it for lexiacal, task response , grammer and coherence criteria and in examiner feedback write accoringly that the candidate response is not in english.
+if there are some words in any other language than english but mostly the student response is in english then it should mention those words in examiner feedback in areas of improvement that the student response has words other than english like ..... give evidene and their corrections in english.
+if student use some words of enlgish but mostly response has other language then english then it should not process it for lexiacal, task response , grammer and coherence criteria etc and tell in examiner feedback accrodingly. 
 
 CRITICAL FORMAT BAN:
 - Do NOT use criterion labels or headings inside the strings.
@@ -510,7 +529,7 @@ Coherence & Cohesion
 • Logical progression of ideas.
 • Clear topic sentences in body paragraphs.
 • Accurate referencing and logical sequencing.
-• Cohesive devices must be controlled, natural, and not mechanical.
+• Cohesive devices must be controlled, natural, and not repititive.
 
 Lexical Resource
 
@@ -627,12 +646,12 @@ PARAGRAPH 4 (COHERENCE & COHESION PERSPECTIVE):
 - Internal sequence inside paragraph 4 must be:
   (a) brief overall comment on how ideas are organized and linked,
   (b) strengths in progression and linking (with evidence),
-  (c) weaknesses like unclear references, weak paragraphing, or mechanical linking (with evidence), using: "the candidate wrote X; this should be Y" if applicable.
+  (c) weaknesses like unclear references, weak paragraphing, unnatural linking (with evidence), using: "the candidate wrote X; this should be Y" if applicable.
 -  MUST evaluate sentence-to-sentence linking (how each sentence connects to the next).
 -  MUST evaluate paragraph-level unity and progression (topic sentence → development → wrap-up).
 -  MUST detect redundancy: if one sentence already completes an idea, do NOT allow unnecessary repetition or restatement; explicitly mention redundancy ONCE (no repetition across paragraphs).
 -  MUST comment on referencing clarity (this/it/they) and whether the reader can follow “who/what” each pronoun refers to.
-- Mention whether linking devices are natural vs mechanical (however, moreover, etc.) and whether transitions feel forced.
+- Mention whether linking devices are natural vs unnatural or repititive (however, moreover, etc.) and whether transitions feel forced.
 - Do NOT repeat any cohesion point elsewhere.
 
 FORMATTING REQUIREMENTS (EXAMINER_FEEDBACK ONLY):

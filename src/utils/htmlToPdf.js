@@ -48,7 +48,7 @@ async function generatePDF(html, writingAnswerId, fileName) {
                 left: '12mm',
             },
 
-            // ✅ RED footer on every page
+            //  RED footer on every page
             footerTemplate: `
     <div style="width:100%; padding:0 12mm;">
       <div style="

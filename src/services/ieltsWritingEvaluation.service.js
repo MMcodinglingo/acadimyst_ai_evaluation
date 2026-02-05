@@ -20,85 +20,109 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
          * @param {Object} params - Task evaluation parameters
          * @returns {Promise<Object>} - Result with taskNumber and assessmentReport (or error)
          */
-        const evaluateSingleTask = async ({ task, taskIndex }) => {
-            const taskNumber = task.taskNumber || taskIndex + 1;
+const evaluateSingleTask = async ({ task, taskIndex }) => {
 
-            // Skip if no text was submitted
-            if (!task.writingText) {
-                winston.info(` Skipping Task ${taskNumber} - no text submitted`);
-                return { taskNumber, taskIndex, skipped: true };
-            }
+  const taskNumber = Number(task.taskNumber || taskIndex + 1);
 
-            winston.info(` Starting AI evaluation for IELTS Task ${taskNumber}`);
+  // Skip if no text was submitted
+  if (!task.writingText) {
+    winston.info(` Skipping Task ${taskNumber} - no text submitted`);
+    return { taskNumber, taskIndex, skipped: true };
+  }
 
-            // STEP 1: Extract question features
-            winston.info(` Step 1: Extracting key features for Task ${taskNumber}...`);
+  winston.info(` Starting AI evaluation for IELTS Task ${taskNumber}`);
 
-            const extractPrompt =
-                taskNumber === 1
-                    ? task1ExtractPrompt({
-                          questionText: testData.writingPrompt || '',
-                          extraText: testData.caseNotes || '',
-                      })
-                    : task2ExtractPrompt({
-                          questionText: testData.writingPrompt || '',
-                          extraText: testData.caseNotes || '',
-                      });
+  //  Resolve prompt from testData.writingtask (payload correct place)
+  const promptTask = (testData?.writingtask || []).find(
+    (t) => Number(t.taskNumber) === taskNumber
+  );
 
-            const extractResponse = await generateIeltsWritingEvaluation({
-                instructions: extractPrompt.instructions,
-                input: extractPrompt.input,
-            });
+  const questionText = promptTask?.task || '';
+  const instructionsText = promptTask?.instructions || '';
+  const imageURL = promptTask?.imageURL || null;
 
-            // Parse extracted features
-            const extractedFeatures = globalLibrary.safeJson(extractResponse.content);
+  //  Require imageURL for Task 1 (your requirement)
+  if (taskNumber === 1 && !imageURL) {
+    winston.error('Task 1 imageURL missing (required)', {
+      writingTestId: testData?._id,
+      promptTask,
+    });
+    throw new Error('Task 1 imageURL missing (required).');
+  }
 
-            if (!extractedFeatures) {
-                winston.error(`Failed to extract features for Task ${taskNumber}. Invalid JSON response.`);
-                throw new Error(`Invalid extraction JSON for Task ${taskNumber}`);
-            }
-            winston.info(`Extracted features for Task ${taskNumber}:`, {
-                type: extractedFeatures.task_type || extractedFeatures.question_type,
-                featureCount: extractedFeatures.key_features?.length || extractedFeatures.must_address?.length || 0,
-            });
+  // STEP 1: Extract question features
+  winston.info(` Step 1: Extracting key features for Task ${taskNumber}...`);
 
-            // STEP 2: Assess student response
-            winston.info(` Step 2: Assessing student response for Task ${taskNumber}...`);
+  const extractPrompt =
+    taskNumber === 1
+      ? task1ExtractPrompt({
+          questionText,
+          instructionsText,
+          imageURL, //  real visual input
+        })
+      : task2ExtractPrompt({
+          questionText,
+          extraText: instructionsText,
+        });
 
-            const assessPrompt =
-                taskNumber === 1
-                    ? task1AssessPrompt({
-                          task1KeyJson: extractedFeatures,
-                          studentResponse: task.writingText,
-                      })
-                    : task2AssessPrompt({
-                          task2KeyJson: extractedFeatures,
-                          studentResponse: task.writingText,
-                      });
+  const extractResponse = await generateIeltsWritingEvaluation({
+    instructions: extractPrompt.instructions,
+    input: extractPrompt.input, //  Task 1: array (text+image), Task 2: string
+  });
 
-            const assessResponse = await generateIeltsWritingEvaluation({
-                instructions: assessPrompt.instructions,
-                input: assessPrompt.input,
-            });
+  
+  // Parse extracted features
+  const extractedFeatures = globalLibrary.safeJson(extractResponse.content);
 
-            const assessmentReport = globalLibrary.safeJson(assessResponse.content);
-            if (!assessmentReport) {
-                winston.error(` Failed to assess Task ${taskNumber}. Invalid JSON response.`);
-                throw new Error(`Invalid assessment JSON for Task ${taskNumber}`);
-            }
+  if (!extractedFeatures) {
+    winston.error(`Failed to extract features for Task ${taskNumber}. Invalid JSON response.`);
+    throw new Error(`Invalid extraction JSON for Task ${taskNumber}`);
+  }
 
-            // Extract overall band score from assessment
-            const overallBand = globalLibrary.getOverallBandFromReport(assessmentReport);
-            const score = overallBand ? Math.round(overallBand * 10) : 0;
-            const grade = overallBand || 0;
+  winston.info(`Extracted features for Task ${taskNumber}:`, {
+    taskType:(task?.taskType || 'unknown').toLowerCase(),
+    featureCount:
+      (Array.isArray(extractedFeatures.key_features) && extractedFeatures.key_features.length) ||
+      (Array.isArray(extractedFeatures.must_address) && extractedFeatures.must_address.length) ||
+      0,
+  });
 
-            winston.info(` Assessment complete for Task ${taskNumber}: Band ${overallBand}`);
+  // STEP 2: Assess student response
+  winston.info(` Step 2: Assessing student response for Task ${taskNumber}...`);
 
-            // Create plain text summary from structured feedback
-            const plainFeedback = `IELTS Writing Task ${taskNumber} - AI Evaluation
+  const assessPrompt =
+    taskNumber === 1
+      ? task1AssessPrompt({
+          task1KeyJson: extractedFeatures,
+          studentResponse: task.writingText,
+        })
+      : task2AssessPrompt({
+          task2KeyJson: extractedFeatures,
+          studentResponse: task.writingText,
+        });
+
+  const assessResponse = await generateIeltsWritingEvaluation({
+    instructions: assessPrompt.instructions,
+    input: assessPrompt.input,
+  });
+
+  const assessmentReport = globalLibrary.safeJson(assessResponse.content);
+  if (!assessmentReport) {
+    winston.error(` Failed to assess Task ${taskNumber}. Invalid JSON response.`);
+    throw new Error(`Invalid assessment JSON for Task ${taskNumber}`);
+  }
+
+  // Extract overall band score from assessment
+  const overallBand = globalLibrary.getOverallBandFromReport(assessmentReport);
+  const score = overallBand ? Math.round(overallBand * 10) : 0;
+  const grade = overallBand || 0;
+
+  winston.info(` Assessment complete for Task ${taskNumber}: Band ${overallBand}`);
+
+  //  Your original plain text summary (kept)
+  const plainFeedback = `IELTS Writing Task ${taskNumber} - AI Evaluation
 
 Overall Band: ${overallBand}
-
 
 === ORIGINALITY CHECK ===
 ${assessmentReport.originality_justification || 'N/A'}
@@ -119,23 +143,23 @@ ${assessmentReport.annotated_version || 'N/A'}
 ${assessmentReport.examiner_feedback || 'N/A'}
 `;
 
- 
+  return {
+    taskNumber,
+    taskIndex,
+    assessmentReport,
+    score,
+    grade,
+    plainFeedback,
+    skipped: false,
 
-            return {
-                taskNumber,
-                taskIndex,
-                assessmentReport,
-                score,
-                grade,
-                plainFeedback,
-                skipped: false,
-                // Include data needed for OpenAI logging
-                writingText: task.writingText,
-                extractPromptInstructions: extractPrompt.instructions,
-                assessPromptInput: assessPrompt.input,
-                assessResponseChoices: assessResponse.choices,
-            };
-        };
+    //  keep your logging payload fields if you use them later
+    writingText: task.writingText,
+    extractPromptInstructions: extractPrompt.instructions,
+    assessPromptInput: assessPrompt.input,
+    assessResponseChoices: assessResponse.choices,
+  };
+};
+
 
         // PARALLEL TASK EVALUATION
         winston.info(` Starting parallel evaluation for ${tasks.length} task(s)...`);
