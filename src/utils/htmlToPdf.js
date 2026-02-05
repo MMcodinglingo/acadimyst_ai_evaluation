@@ -48,7 +48,6 @@ async function generatePDF(html, writingAnswerId, fileName) {
                 left: '12mm',
             },
 
-
             //  RED footer on every page
             footerTemplate: `
     <div style="width:100%; padding:0 12mm;">
@@ -71,22 +70,22 @@ async function generatePDF(html, writingAnswerId, fileName) {
         });
 
         await browser.close();
-        // let s3_path_key = `accessorFeedback/${writingAnswerId}_${Date.now()}.pdf`;
 
-        // let contentType = '.pdf';
-        // let resp = await uploadToS3(s3_path_key, contentType, pdfPath);
-        // let s3Url = `${config.aws.s3.baseUrl}/${resp.Key}`;
-        // resp.s3Url = s3Url;
-        // if (fs.existsSync(pdfPath)) {
-        //     fs.unlinkSync(pdfPath);
-        //     winston.info(`Deleted local file: ${pdfPath}`);
-        // } else {
-        //     winston.warn(`Local PDF not found for deletion: ${pdfPath}`);
-        // }
+        let s3_path_key = `accessorFeedback/${writingAnswerId}_${Date.now()}.pdf`;
+
+        let contentType = '.pdf';
+        let resp = await uploadToS3(s3_path_key, contentType, pdfPath);
+        let s3Url = `${config.aws.s3.baseUrl}/${resp.Key}`;
+        resp.s3Url = s3Url;
+        if (fs.existsSync(pdfPath)) {
+            fs.unlinkSync(pdfPath);
+            winston.info(`Deleted local file: ${pdfPath}`);
+        } else {
+            winston.warn(`Local PDF not found for deletion: ${pdfPath}`);
+        }
 
         winston.info(`PDF generated successfully at ${pdfPath}`);
-        return { localPath: pdfPath };
-        // return resp;
+        return resp;
     } catch (err) {
         console.log(err);
         winston.error('PDF generation failed:', err);
