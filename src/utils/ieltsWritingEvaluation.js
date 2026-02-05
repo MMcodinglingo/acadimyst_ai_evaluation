@@ -41,8 +41,13 @@ async function generateIeltsWritingEvaluation({ instructions, input }) {
             messages.push({ role: 'user', content: input });
         } else if (Array.isArray(input)) {
             // Support array of messages (for future multimodal support)
-            messages = messages.concat(input);
+            messages.push({ role: 'user', content: input });
         }
+
+          else {
+      // safety fallback
+      messages.push({ role: 'user', content: String(input ?? '') });
+    }
 
         // Use GPT-5 like junior dev's code - no fallback
         const model = 'gpt-5';

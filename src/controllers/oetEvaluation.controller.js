@@ -51,7 +51,6 @@ const handleOetWritingEvaluation = async (req, res, next) => {
             },
         });
     } catch (error) {
-        console.log('Error in OET Writing Evaluation Controller:', error);
         return res.status(status[500]).json({
             success: 0,
             message: error?.message ||  'Something went wrong. Please try again',
