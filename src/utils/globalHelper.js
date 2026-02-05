@@ -619,7 +619,7 @@ function extractLetterBlock(content) {
     if (c.includes('[ERROR:') || c.includes('ERROR:')) {
         const errorMatch = c.match(/\[ERROR:[^\]]+\]/i) || c.match(/ERROR:[^\n]+/i);
         if (errorMatch) {
-            // ✅ Return pre-styled error HTML (server-side styling)
+            //  Return pre-styled error HTML (server-side styling)
             return `<div style="color: #dc2626; font-weight: bold; padding: 16px; background-color: #fee2e2; border-radius: 8px; border: 2px solid #dc2626; margin: 10px 0;">
                 ${escapeHtml(errorMatch[0])}
             </div>`;
@@ -764,7 +764,7 @@ function getAssessmentOnly(content) {
     return c.replace(/^\*\*PART\s*1[\s\S]*?\*\*\s*/i, '').trim();
 }
 
-// ✅ NEW FORMAT CARD BUILDER:
+//  NEW FORMAT CARD BUILDER:
 // Creates cards for **SUMMARY**, **STRENGTHS**, **AREAS FOR IMPROVEMENT**, **FINAL RESULT**
 function buildAssessmentCards(assessmentText) {
     const text = String(assessmentText || '').trim();
