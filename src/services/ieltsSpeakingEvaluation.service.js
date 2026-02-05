@@ -124,14 +124,17 @@ async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingPa
                 let order = i; // Default fallback
 
                 if (partDoc.questions && typeof partDoc.questions.id === 'function') {
-                    const subQ = partDoc.questions.id(audio.questionId);
+                    const subQ = Array.isArray(partDoc.questions)
+  ? partDoc.questions.find(q => String(q._id) === String(audio.questionId))
+  : null;
 
-                    if (subQ && subQ.questions) {
-                        questionText = subQ.questions;
-                        questionHeading = subQ.questionHeading || '';
-                        questionNumber = subQ.questionNumber ?? null;
-                        order = subQ.order ?? i;
-                    }
+if (subQ) {
+  questionText = subQ.questions;
+  questionHeading = subQ.questionHeading || '';
+  questionNumber = subQ.questionNumber ?? null;
+  order = subQ.order ?? order;
+}
+
                 }
 
                 const partNumber = partDoc.partNumber;
