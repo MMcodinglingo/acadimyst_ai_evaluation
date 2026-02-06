@@ -3,6 +3,7 @@ const { getClient } = require('../redis/redis.connection');
 const { ieltsWritingEvaluation } = require('./handlers/ieltsWritingevaluation');
 const { ieltsSpeakingEvaluation } = require('../bullmq/handlers/ieltsSpeakingEvaluation');
 const { oetSpeakingEvaluation } = require('../bullmq/handlers/oetSpeakingEvaluation');
+const { oetWritingEvaluation } = require('../bullmq/handlers/oetWritingEvaluation');
 const winston = require('../logger');
 
 const workerRegistry = {};
@@ -154,7 +155,7 @@ const initializeAllWorkers = () => {
             });
         }
         if (workerConfig.oetWritingEvaluation) {
-            workers.ieltsWritingEvaluation = createWorker('oetWritingEvaluationQueue', oetSpeakingEvaluation, {
+            workers.ieltsWritingEvaluation = createWorker('oetWritingEvaluationQueue', oetWritingEvaluation, {
                 concurrency: workerConfig?.oetWritingEvaluation.concurrency || 15,
             });
         }
