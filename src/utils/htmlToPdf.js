@@ -37,10 +37,10 @@ async function generatePDF(html, writingAnswerId, fileName) {
             format: 'A4',
             printBackground: true,
 
-            // ✅ must be TRUE to show footer on every page
+            //  must be TRUE to show footer on every page
             displayHeaderFooter: false,
 
-            // ✅ reserve space for footer
+            //  reserve space for footer
             margin: {
                 top: '15mm',
                 right: '12mm',
@@ -48,7 +48,7 @@ async function generatePDF(html, writingAnswerId, fileName) {
                 left: '12mm',
             },
 
-            // ✅ RED footer on every page
+            //  RED footer on every page
             footerTemplate: `
     <div style="width:100%; padding:0 12mm;">
       <div style="

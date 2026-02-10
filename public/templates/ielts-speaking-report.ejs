@@ -594,21 +594,11 @@
         <!-- ================= NEW REPORT (4 CARDS) ================= -->
         <div class="section">
           <div class="assessment-grid" id="reportCards">
+
             <div class="assessment-card full-width">
-              <div class="card-title">Summary</div>
-              <div class="content"><%= summary || '—' %></div>
-            </div>
-            <div class="assessment-card full-width">
-              <div class="card-title">Strengths</div>
-              <div class="content"><%= strengths || '—' %></div>
-            </div>
-            <div class="assessment-card full-width">
-              <div class="card-title">Areas of Improvement</div>
-              <div class="content"><%= areas_of_improvement || '—' %></div>
-            </div>
-            <div class="assessment-card full-width">
-              <div class="card-title">Actionable Feedback</div>
-              <div class="content"><%= actionable_feedback || '—' %></div>
+              <div class="card-title">Examiner's Feedback</div>
+              <div class="content"><%- examiner_feedback || '—' %></div>
+
             </div>
           </div>
         </div>

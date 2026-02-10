@@ -19,7 +19,9 @@ const redisManager = require('./config/redis/index');
 const config = require('./config/config');
 // ! DO not Change this code
 
-redisManager
+if (process.env.NODE_ENV !== 'development') {
+
+    redisManager
     .initialize(config)
     .then((initResult) => {
         winston.info('Redis/BullMQ Initialization Complete', {
@@ -48,6 +50,9 @@ redisManager
         });
         // Don't exit, allow app to run without Redis
     });
+} else {
+    winston.info('Skipping Redis/BullMQ initialization in development mode', { service: 'Redis' });
+}
 
 const exitHandler = () => {
     if (server) {
