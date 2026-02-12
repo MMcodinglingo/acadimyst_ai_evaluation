@@ -56,13 +56,6 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
                     instructionsText,
                     imageURL: imageURL || null,
                 });
-
-                if (!imageURL) {
-                    extractPrompt = {
-                        ...extractPrompt,
-                        input: `${instructionsText}\n\n${questionText}`.trim(),
-                    };
-                }
             } else {
                 extractPrompt = task2ExtractPrompt({
                     questionText,
