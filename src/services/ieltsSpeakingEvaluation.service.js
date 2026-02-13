@@ -125,16 +125,15 @@ async function handleIeltsSpeakingEvaluation({ studentSpeakingAnswer, speakingPa
 
                 if (partDoc.questions && typeof partDoc.questions.id === 'function') {
                     const subQ = Array.isArray(partDoc.questions)
-  ? partDoc.questions.find(q => String(q._id) === String(audio.questionId))
-  : null;
+                        ? partDoc.questions.find((q) => String(q._id) === String(audio.questionId))
+                        : null;
 
-if (subQ) {
-  questionText = subQ.questions;
-  questionHeading = subQ.questionHeading || '';
-  questionNumber = subQ.questionNumber ?? null;
-  order = subQ.order ?? order;
-}
-
+                    if (subQ) {
+                        questionText = subQ.questions;
+                        questionHeading = subQ.questionHeading || '';
+                        questionNumber = subQ.questionNumber ?? null;
+                        order = subQ.order ?? order;
+                    }
                 }
 
                 const partNumber = partDoc.partNumber;
@@ -384,7 +383,6 @@ if (subQ) {
 Please answer each question directly according to its task.Re-record each answer while reading the question first, provide relevant answer, keep the same topic and avoid switching to unrelated ideas.
 
 Mismatched: ${allDetail}`.trim();
-
             } else if (mismatches.length > 0) {
                 winston.warn(`${mismatches.length} tasks mismatched - adjusting feedback`);
                 const detail = buildMismatchDetail(mismatches, qaPairsForScoring);
@@ -399,7 +397,6 @@ Mismatched: ${allDetail}`.trim();
 Task alignment issue: some answers did not match their questions, which lowered the overall score.
 Mismatches: ${detail}`.trim();
                 }
-
             }
 
             // 6) Ensure required strings exist (schema safety)
@@ -434,17 +431,18 @@ Mismatches: ${detail}`.trim();
             year: 'numeric',
         });
 
-        // helper function to bold the response 
+        // helper function to bold the response
         function boldStarsToHtml(text = '') {
-  return String(text)
-    // escape HTML first to avoid injection
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    // then convert *something* to bold
-    .replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
-}
-
+            return (
+                String(text)
+                    // escape HTML first to avoid injection
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    // then convert *something* to bold
+                    .replace(/\*([^*]+)\*/g, '<strong>$1</strong>')
+            );
+        }
 
         const templateData = {
             studentName: student.fullName || student.firstName || 'Student',

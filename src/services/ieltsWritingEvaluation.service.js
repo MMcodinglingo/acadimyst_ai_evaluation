@@ -38,29 +38,30 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
             const instructionsText = promptTask?.instructions || '';
             const imageURL = promptTask?.imageURL || null;
 
-            //  Require imageURL for Task 1 (your requirement)
+            //  Require imageURL for Task 1 (Updated By Jawad)
             if (taskNumber === 1 && !imageURL) {
-                winston.error('Task 1 imageURL missing (required)', {
+                winston.warn('Task 1 imageURL missing Falling Back to Text-only extraction', {
                     writingTestId: testData?._id,
-                    promptTask,
+                    taskNumber,
                 });
-                throw new Error('Task 1 imageURL missing (required).');
             }
 
             // STEP 1: Extract question features
             winston.info(` Step 1: Extracting key features for Task ${taskNumber}...`);
 
-            const extractPrompt =
-                taskNumber === 1
-                    ? task1ExtractPrompt({
-                          questionText,
-                          instructionsText,
-                          imageURL, //  real visual input
-                      })
-                    : task2ExtractPrompt({
-                          questionText,
-                          extraText: instructionsText,
-                      });
+            let extractPrompt;
+            if (taskNumber === 1) {
+                extractPrompt = task1ExtractPrompt({
+                    questionText,
+                    instructionsText,
+                    imageURL: imageURL || null,
+                });
+            } else {
+                extractPrompt = task2ExtractPrompt({
+                    questionText,
+                    extraText: instructionsText,
+                });
+            }
 
             const extractResponse = await generateIeltsWritingEvaluation({
                 instructions: extractPrompt.instructions,

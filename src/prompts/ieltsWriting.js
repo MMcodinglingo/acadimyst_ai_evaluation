@@ -4,19 +4,27 @@
  */
 
 function task1ExtractPrompt({ questionText, instructionsText, imageURL }) {
-  return {
-    instructions: `
+    const textBlock = `TASK 1 Question Text:\n${questionText}\n\nINSTRUCTIONS:\n${instructionsText || ''}`.trim();
+
+    const hasImage = typeof imageURL === 'string' && imageURL.trim().length > 0;
+
+    return {
+        instructions: `
 You are an IELTS Writing Task 1 examiner and visual-data summarization expert.
 
 You will receive:
 1) The Task 1 prompt text
-2) A visual (map/chart/process/table) as an IMAGE
+2) Instrcution text
+3) If an image is provided then it should be A visual (map/chart/process/table) as an IMAGE
+4) If image is not provided then it will be general Training Ielts Task in that case .
+
+-inlcude in output only what is appropriate e.g if there is no comparison in question then the key feature should not have this.
 
 Extract ONLY the key features that a high-band answer must include.
 
 Rules:
 - Be factual and neutral.
-- Do not invent details not visible in the visual.
+- Do not invent details .
 - Output STRICT JSON only (no markdown).
 
 JSON schema:
@@ -31,18 +39,14 @@ JSON schema:
 }
 `.trim(),
 
-    //  multimodal input
-    input: [
-      {
-        type: 'text',
-        text: `TASK 1 Question Text:\n${questionText}\n\nINSTRUCTIONS:\n${instructionsText || ''}`,
-      },
-      {
-        type: 'image_url',
-        image_url: { url : imageURL },
-      },
-    ],
-  };
+        //  If image exists -> multimodal array. If not -> plain string.
+        input: hasImage
+            ? [
+                  { type: 'text', text: textBlock },
+                  { type: 'image_url', image_url: { url: imageURL.trim() } },
+              ]
+            : textBlock,
+    };
 }
 
 /**
