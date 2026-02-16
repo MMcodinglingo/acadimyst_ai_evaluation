@@ -18,8 +18,8 @@ async function oetSpeakingEvaluation(job) {
         });
 
         // Log successful queueing
-        winston.info('Ielts Writing evaluation queued successfully via BullMQ', {
-            queue: 'ieltsWritingEvaluation',
+        winston.info('Oet Speaking evaluation queued successfully via BullMQ', {
+            queue: 'oetSpeakingEvaluationQueue',
         });
     } catch (queueError) {
         winston.error('There is error in adding Job:=>', queueError);

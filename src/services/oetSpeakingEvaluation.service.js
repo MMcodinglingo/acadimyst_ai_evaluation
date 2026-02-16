@@ -54,7 +54,7 @@ async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speak
 
             const intelligibilityReport = await generateIntelligibilityReport_DoctorOnly(step1FinalJson, speakingCard, transcript);
 
-            // ✅ Parse ALL data from the intelligibility report
+            //  Parse ALL data from the intelligibility report
             const parsedReport = parseIntelligibilityReport(intelligibilityReport?.content);
 
             totalScore = parsedReport.totalScore;

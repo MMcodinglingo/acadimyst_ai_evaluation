@@ -12,7 +12,7 @@ async function ieltsWritingEvaluation(job) {
 
         // Log successful queueing
         winston.info('Ielts Writing evaluation queued successfully via BullMQ', {
-            queue: 'ieltsWritingEvaluation',
+            queue: 'ieltsWritingEvaluationQueue',
         });
     } catch (queueError) {
         winston.error('There is error in adding Job:=>', queueError);

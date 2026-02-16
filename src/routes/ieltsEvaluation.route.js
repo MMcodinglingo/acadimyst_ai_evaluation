@@ -3,6 +3,9 @@ const ieltsEvaluationController = require('../controllers/ieltsEvaluation.contro
 
 const router = express.Router();
 
-router.post('/ielts-evaluation', ieltsEvaluationController.handleIeltsWritingEvaluation);
+router.post('/ielts-writing-evaluation', ieltsEvaluationController.handleIeltsWritingEvaluation);
+
+router.post('/ielts-speaking-evaluation', ieltsEvaluationController.handleIeltsSpeakingEvaluation);
+
 
 module.exports = router;

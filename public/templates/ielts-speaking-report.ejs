@@ -204,7 +204,7 @@
         background: #ffffff;
         padding: 14px 14px;
         box-shadow: 0 4px 16px rgba(17, 24, 39, 0.06);
-        min-height: 120px;
+        min-height: auto !important;
       }
 
       .assessment-card.full-width {
@@ -370,6 +370,123 @@
           grid-template-columns: 1fr;
         }
       }
+
+      /* ================= PDF PRINT CONTROL Breaking Sections================= */
+@media print {
+  body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* IMPORTANT: grid causes splits in Chrome PDF. Use block flow in print */
+  .assessment-grid {
+    display: block !important;
+  }
+  .assessment-card {
+    display: block !important;
+    margin: 0 0 14px 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Result area should also not split */
+  .result-wrap,
+  .final-result,
+  .band-legend,
+  .cta,
+  .score-table,
+  .student-info {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Avoid splitting table rows */
+  tr, td, th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ===== RED FOOTER ON EVERY PAGE ===== */
+  .report-footer {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: #9d2235 !important;
+    color: #fff !important;
+    padding: 12px 18px !important;
+    z-index: 9999 !important;
+  }
+
+  /* Reserve space so footer never overlaps content */
+  #reportRoot {
+    padding-bottom: 0 !important;
+  }
+
+  /* OPTIONAL: remove shadow/borders that can look weird in PDF */
+  .assessment-card,
+  .score-table {
+    box-shadow: none !important;
+  }
+  .no-break { break-inside: avoid !important; page-break-inside: avoid !important; }
+  .reult-wrap{
+    margin-bottom: 14mm !important;
+  }
+
+}
+/* ================= FIXED FOOTER FOR PRINTED PDF At the end of every PAGE================= */
+@media print {
+  /* make footer fixed at bottom of each page */
+  .report-footer {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+
+    margin: 0 !important;
+    border-radius: 0 !important;
+
+    background: #9d2235 !important;
+    color: #ffffff !important;
+    padding: 12px 18px !important;
+
+    z-index: 9999 !important;
+  }
+
+  /* reserve space so footer doesn't overlap content */
+  #reportRoot {
+    padding-bottom: 0px !important;
+  }
+}
+
+@media print {
+  /* Use normal flow in PDF (grid can cause splitting) */
+  .assessment-grid { display: block !important; }
+  .assessment-card {
+    display: block !important;
+    margin: 0 0 14px 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /*  Keep result together + add space before footer */
+  .result-wrap {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    padding-bottom: 4mm !important; /* THIS creates the gap above footer */
+  }
+
+  /* Remove Book Now from PDF AND remove its empty spacing */
+  .cta { display: none !important; }
+  .cta-section { display: none !important; }
+  .divider.before-cta { display: none !important; }
+
+}
+
+
     </style>
   </head>
 
@@ -477,21 +594,11 @@
         <!-- ================= NEW REPORT (4 CARDS) ================= -->
         <div class="section">
           <div class="assessment-grid" id="reportCards">
+
             <div class="assessment-card full-width">
-              <div class="card-title">Summary</div>
-              <div class="content"><%= summary || '—' %></div>
-            </div>
-            <div class="assessment-card full-width">
-              <div class="card-title">Strengths</div>
-              <div class="content"><%= strengths || '—' %></div>
-            </div>
-            <div class="assessment-card full-width">
-              <div class="card-title">Areas of Improvement</div>
-              <div class="content"><%= areas_of_improvement || '—' %></div>
-            </div>
-            <div class="assessment-card full-width">
-              <div class="card-title">Actionable Feedback</div>
-              <div class="content"><%= actionable_feedback || '—' %></div>
+              <div class="card-title">Examiner's Feedback</div>
+              <div class="content"><%- examiner_feedback || '—' %></div>
+
             </div>
           </div>
         </div>
@@ -499,7 +606,7 @@
         <div class="divider"></div>
 
         <!-- ================= RESULT CARD ================= -->
-        <div class="result-wrap">
+        <div class="result-wrap no-break">
           <div class="final-result <%= (scores && scores.overall_band >= 7) ? 'pass' : '' %>" id="finalResultBox">
             <h3>ASSESSMENT RESULT</h3>
             <div class="grade" id="finalGrade"><%= (scores && scores.overall_band) || '—' %></div>
@@ -514,27 +621,6 @@
                 Band <%= b %>
               </div>
             <% }); %>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- CTA -->
-        <div class="section">
-          <div class="cta">
-            <div>
-              <strong>Book 1:1 Session for Improvement</strong>
-              <p>
-                Get personalised feedback and a clear improvement plan for your
-                next attempt.
-              </p>
-            </div>
-            <a
-              href="https://mmeinstitute.com/book-1-1-session"
-              target="_blank"
-              rel="noopener noreferrer"
-              >Book Now</a
-            >
           </div>
         </div>
 

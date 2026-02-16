@@ -619,7 +619,7 @@ function extractLetterBlock(content) {
     if (c.includes('[ERROR:') || c.includes('ERROR:')) {
         const errorMatch = c.match(/\[ERROR:[^\]]+\]/i) || c.match(/ERROR:[^\n]+/i);
         if (errorMatch) {
-            // ✅ Return pre-styled error HTML (server-side styling)
+            //  Return pre-styled error HTML (server-side styling)
             return `<div style="color: #dc2626; font-weight: bold; padding: 16px; background-color: #fee2e2; border-radius: 8px; border: 2px solid #dc2626; margin: 10px 0;">
                 ${escapeHtml(errorMatch[0])}
             </div>`;
@@ -764,7 +764,7 @@ function getAssessmentOnly(content) {
     return c.replace(/^\*\*PART\s*1[\s\S]*?\*\*\s*/i, '').trim();
 }
 
-// ✅ NEW FORMAT CARD BUILDER:
+//  NEW FORMAT CARD BUILDER:
 // Creates cards for **SUMMARY**, **STRENGTHS**, **AREAS FOR IMPROVEMENT**, **FINAL RESULT**
 function buildAssessmentCards(assessmentText) {
     const text = String(assessmentText || '').trim();
@@ -897,6 +897,31 @@ function markdownFixesToHtml(raw) {
     });
     return withBold.replace(/\n/g, '<br/>');
 }
+
+/* Helpers function for ielts writing */
+
+function allowStrongDelOnly(s) {
+  const escaped = escapeHtml(s);
+  return escaped
+    .replaceAll('&lt;strong&gt;', '<strong>')
+    .replaceAll('&lt;/strong&gt;', '</strong>')
+    .replaceAll('&lt;del&gt;', '<del>')
+    .replaceAll('&lt;/del&gt;', '</del>');
+}
+
+function paragraphsToHtmlSafe(text) {
+  const safe = allowStrongDelOnly(text);
+  return safe
+    .split(/\n\s*\n/g)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => `<p class="fbp">${p}</p>`)
+    .join('');
+}
+
+
+
+
 /**
  * Build task block sections for a single IELTS task
  * @param {String} label - Task label (e.g., "Task 1", "Task 2")
@@ -911,7 +936,7 @@ function buildTaskBlock(label, taskBlock) {
     s.push(section(`${label}: Overall Band`, toKVTable({ 'Overall Band': taskBlock.overall_band ?? '—' }, 'Item', 'Value')));
 
     // 2) Originality justification
-    s.push(section(`${label}: Originality Justification`, `<p>${escapeHtml(taskBlock.originality_justification || '—')}</p>`));
+    // s.push(section(`${label}: Originality Justification`, `<p>${escapeHtml(taskBlock.originality_justification || '—')}</p>`));
 
     // 3) Inline corrections
     if (taskBlock.annotated_version) {
@@ -936,14 +961,8 @@ function buildTaskBlock(label, taskBlock) {
         s.push(section(`${label}: Inline Corrections`, "<p class='muted'>—</p>"));
     }
 
-    // 4) Summary
-    s.push(section(`${label}: Summary`, `<p>${escapeHtml(taskBlock.summary || '—')}</p>`));
-
-    // 5) Strengths
-    s.push(section(`${label}: Strengths`, `<p>${escapeHtml(taskBlock.strength || '—')}</p>`));
-
-    // 6) Areas of improvement
-    s.push(section(`${label}: Areas Of Improvement`, `<p>${escapeHtml(taskBlock.areas_of_improvement || '—')}</p>`));
+    // 7) Examiner Feedback
+    s.push(section(`${label}: Examiner Feedback`, `<div class = "feedback">${paragraphsToHtmlSafe(taskBlock.examiner_feedback || '—')}</div>`));
 
     return s;
 }

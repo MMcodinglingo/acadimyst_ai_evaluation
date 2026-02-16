@@ -28,22 +28,49 @@ async function generatePDF(html, writingAnswerId, fileName) {
 
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'networkidle0' });
-        await page.emulateMediaType('screen');
+        await page.emulateMediaType('print');
 
         // 5. Generate PDF
+        winston.info(`Generating PDF: ${pdfPath}`);
         await page.pdf({
             path: pdfPath,
             format: 'A4',
             printBackground: true,
+
+            //  must be TRUE to show footer on every page
+            displayHeaderFooter: false,
+
+            //  reserve space for footer
             margin: {
-                top: '0px',
-                right: '0px',
-                bottom: '0px',
-                left: '0px',
+                top: '15mm',
+                right: '12mm',
+                bottom: '22mm',
+                left: '12mm',
             },
+
+            //  RED footer on every page
+            footerTemplate: `
+    <div style="width:100%; padding:0 12mm;">
+      <div style="
+        background:#9d2235;
+        color:#fff;
+        font-size:10px;
+        font-weight:700;
+        text-align:center;
+        padding:8px 0;
+        border-radius:8px;
+      ">
+        MM Coding and M&amp;M Institute
+        <span style="float:right; margin-right:8px; font-weight:600;">
+          <span class="pageNumber"></span>/<span class="totalPages"></span>
+        </span>
+      </div>
+    </div>
+  `,
         });
 
         await browser.close();
+
         let s3_path_key = `accessorFeedback/${writingAnswerId}_${Date.now()}.pdf`;
 
         let contentType = '.pdf';
@@ -70,11 +97,15 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
     let browser = null;
     let pdfPath = null;
 
+    const writingAnswerId = studentWritingAnswer?._id || studentWritingAnswer?.writingAnswerId || `tmp_${Date.now()}`;
+    const studentId = student?._id || ' unknown student ';
+    const fileName = `ielts_writing_feedback_${writingAnswerId}_${Date.now()}.pdf`;
+
     try {
-        winston.info(`Starting IELTS PDF generation for student: ${student._id}, writing answer: ${studentWritingAnswer._id}`);
+        winston.info(`Starting IELTS PDF generation for student: ${studentId}, writing answer: ${writingAnswerId}`);
 
         // 1. Extract student name
-        const studentName = student.firstName || student.username || 'Student';
+        const studentName = student?.firstName || student?.username || 'Student';
 
         // 2. Generate current date string
         const generatedDate = todayString();
@@ -113,8 +144,7 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
             winston.info(`Created directory: ${dirPath}`);
         }
 
-        // 7. Define PDF filename and path
-        const fileName = `ielts_writing_feedback_${studentWritingAnswer._id}_${Date.now()}.pdf`;
+        // 7. Define PDF path
         pdfPath = path.join(dirPath, fileName);
 
         // 8. Launch Puppeteer
@@ -135,7 +165,7 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
         });
 
         // Emulate screen media for better rendering
-        await page.emulateMediaType('screen');
+        await page.emulateMediaType('print');
 
         // Wait a bit for rendering
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -162,7 +192,7 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
 
         // 11. Upload to S3
         winston.info('Uploading PDF to S3...');
-        const s3PathKey = `pdf/ielts_writing_feedback_${studentWritingAnswer._id}_${Date.now()}.pdf`;
+        const s3PathKey = `pdf/ielts_writing_feedback_${studentWritingAnswer?._id || writingAnswerId}_${Date.now()}.pdf`;
         const contentType = 'application/pdf';
 
         const uploadResult = await uploadToS3(s3PathKey, contentType, pdfPath);
@@ -303,7 +333,7 @@ async function generateOETWritingPdf(
         });
 
         // Emulate screen media for better rendering
-        await page.emulateMediaType('screen');
+        await page.emulateMediaType('print');
 
         // Wait a bit for JavaScript to execute and render cards
         await new Promise((resolve) => setTimeout(resolve, 2000));

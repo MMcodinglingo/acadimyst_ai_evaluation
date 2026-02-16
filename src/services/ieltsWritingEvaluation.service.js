@@ -21,33 +21,51 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
          * @returns {Promise<Object>} - Result with taskNumber and assessmentReport (or error)
          */
         const evaluateSingleTask = async ({ task, taskIndex }) => {
-            const taskNumber = task.taskNumber || taskIndex + 1;
+            const taskNumber = Number(task.taskNumber || taskIndex + 1);
 
             // Skip if no text was submitted
             if (!task.writingText) {
-                winston.info(`⏭️ Skipping Task ${taskNumber} - no text submitted`);
+                winston.info(` Skipping Task ${taskNumber} - no text submitted`);
                 return { taskNumber, taskIndex, skipped: true };
             }
 
-            winston.info(`🔍 Starting AI evaluation for IELTS Task ${taskNumber}`);
+            winston.info(` Starting AI evaluation for IELTS Task ${taskNumber}`);
+
+            //  Resolve prompt from testData.writingtask (payload correct place)
+            const promptTask = (testData?.writingTask || []).find((t) => Number(t.taskNumber) === taskNumber);
+
+            const questionText = promptTask?.task || '';
+            const instructionsText = promptTask?.instructions || '';
+            const imageURL = promptTask?.imageURL || null;
+
+            //  Require imageURL for Task 1 (Updated By Jawad)
+            if (taskNumber === 1 && !imageURL) {
+                winston.warn('Task 1 imageURL missing Falling Back to Text-only extraction', {
+                    writingTestId: testData?._id,
+                    taskNumber,
+                });
+            }
 
             // STEP 1: Extract question features
-            winston.info(`📋 Step 1: Extracting key features for Task ${taskNumber}...`);
+            winston.info(` Step 1: Extracting key features for Task ${taskNumber}...`);
 
-            const extractPrompt =
-                taskNumber === 1
-                    ? task1ExtractPrompt({
-                          questionText: testData.writingPrompt || '',
-                          extraText: testData.caseNotes || '',
-                      })
-                    : task2ExtractPrompt({
-                          questionText: testData.writingPrompt || '',
-                          extraText: testData.caseNotes || '',
-                      });
+            let extractPrompt;
+            if (taskNumber === 1) {
+                extractPrompt = task1ExtractPrompt({
+                    questionText,
+                    instructionsText,
+                    imageURL: imageURL || null,
+                });
+            } else {
+                extractPrompt = task2ExtractPrompt({
+                    questionText,
+                    extraText: instructionsText,
+                });
+            }
 
             const extractResponse = await generateIeltsWritingEvaluation({
                 instructions: extractPrompt.instructions,
-                input: extractPrompt.input,
+                input: extractPrompt.input, //  Task 1: array (text+image), Task 2: string
             });
 
             // Parse extracted features
@@ -57,13 +75,17 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
                 winston.error(`Failed to extract features for Task ${taskNumber}. Invalid JSON response.`);
                 throw new Error(`Invalid extraction JSON for Task ${taskNumber}`);
             }
+
             winston.info(`Extracted features for Task ${taskNumber}:`, {
-                type: extractedFeatures.task_type || extractedFeatures.question_type,
-                featureCount: extractedFeatures.key_features?.length || extractedFeatures.must_address?.length || 0,
+                taskType: (task?.taskType || 'unknown').toLowerCase(),
+                featureCount:
+                    (Array.isArray(extractedFeatures.key_features) && extractedFeatures.key_features.length) ||
+                    (Array.isArray(extractedFeatures.must_address) && extractedFeatures.must_address.length) ||
+                    0,
             });
 
             // STEP 2: Assess student response
-            winston.info(`📝 Step 2: Assessing student response for Task ${taskNumber}...`);
+            winston.info(` Step 2: Assessing student response for Task ${taskNumber}...`);
 
             const assessPrompt =
                 taskNumber === 1
@@ -83,7 +105,7 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
 
             const assessmentReport = globalLibrary.safeJson(assessResponse.content);
             if (!assessmentReport) {
-                winston.error(`❌ Failed to assess Task ${taskNumber}. Invalid JSON response.`);
+                winston.error(` Failed to assess Task ${taskNumber}. Invalid JSON response.`);
                 throw new Error(`Invalid assessment JSON for Task ${taskNumber}`);
             }
 
@@ -92,9 +114,9 @@ const handleIeltsWritingAiEvaluation = async ({ studentWritingAnswer, student, t
             const score = overallBand ? Math.round(overallBand * 10) : 0;
             const grade = overallBand || 0;
 
-            winston.info(`✅ Assessment complete for Task ${taskNumber}: Band ${overallBand}`);
+            winston.info(` Assessment complete for Task ${taskNumber}: Band ${overallBand}`);
 
-            // Create plain text summary from structured feedback
+            //  Your original plain text summary (kept)
             const plainFeedback = `IELTS Writing Task ${taskNumber} - AI Evaluation
 
 Overall Band: ${overallBand}
@@ -112,7 +134,11 @@ ${assessmentReport.strength || 'N/A'}
 ${assessmentReport.areas_of_improvement || 'N/A'}
 
 === ANNOTATED VERSION ===
-${assessmentReport.annotated_version || 'N/A'}`;
+${assessmentReport.annotated_version || 'N/A'}
+
+===== Examiner Feedback (Full) =====
+${assessmentReport.examiner_feedback || 'N/A'}
+`;
 
             return {
                 taskNumber,
@@ -122,7 +148,8 @@ ${assessmentReport.annotated_version || 'N/A'}`;
                 grade,
                 plainFeedback,
                 skipped: false,
-                // Include data needed for OpenAI logging
+
+                //  keep your logging payload fields if you use them later
                 writingText: task.writingText,
                 extractPromptInstructions: extractPrompt.instructions,
                 assessPromptInput: assessPrompt.input,
@@ -131,7 +158,7 @@ ${assessmentReport.annotated_version || 'N/A'}`;
         };
 
         // PARALLEL TASK EVALUATION
-        winston.info(`🚀 Starting parallel evaluation for ${tasks.length} task(s)...`);
+        winston.info(` Starting parallel evaluation for ${tasks.length} task(s)...`);
 
         const evaluationResults = await Promise.allSettled(
             tasks.map((task, i) =>
@@ -150,6 +177,7 @@ ${assessmentReport.annotated_version || 'N/A'}`;
         for (const res of evaluationResults) {
             if (res.status === 'fulfilled' && res.value && !res.value.error) {
                 const r = res.value;
+                r.checkingStatus = 'checked';
                 tasksResult.push(r);
 
                 if (!r.skipped) {
@@ -166,7 +194,7 @@ ${assessmentReport.annotated_version || 'N/A'}`;
             const task1Band = globalLibrary.getOverallBandFromReport(taskReports.task1);
             const task2Band = globalLibrary.getOverallBandFromReport(taskReports.task2);
 
-            const weighted = Number((task1Band * 0.333 + task2Band * 0.666).toFixed(3));
+            const weighted = Number((task1Band * 0.33 + task2Band * 0.66).toFixed(2));
             const rounded = globalLibrary.roundToHalfBand(weighted);
 
             const combinedPrompt = finalCombinedReportPrompt({
@@ -192,12 +220,41 @@ ${assessmentReport.annotated_version || 'N/A'}`;
                     rounded_writing_band: rounded,
                 };
             }
+        } else {
+            let isTask1 = taskReports.task1 ? true : false;
+            let isTask2 = taskReports.task2 ? true : false;
+            const taskBand = isTask1
+                ? globalLibrary.getOverallBandFromReport(taskReports.task1)
+                : globalLibrary.getOverallBandFromReport(taskReports.task2);
+            const rounded = globalLibrary.roundToHalfBand(taskBand);
+
+            const combinedPrompt = finalCombinedReportPrompt({
+                task1Report: isTask1 ? taskReports.task1 : null,
+                task2Report: isTask2 ? taskReports.task2 : null,
+                rounded,
+            });
+            const combinedResponse = await generateIeltsWritingEvaluation({
+                instructions: combinedPrompt.instructions,
+                input: combinedPrompt.input,
+            });
+            finalReport = globalLibrary.safeJson(combinedResponse.content);
+
+            if (finalReport) {
+                finalReport.final_summary = {
+                    ...(finalReport.final_summary || {}),
+                    Overall_writing_band: rounded,
+                    task1_band: isTask1 ? taskBand : null,
+                    task2_band: isTask2 ? taskBand : null,
+                    weighted_estimated_writing_band: taskBand,
+                    rounded_writing_band: rounded,
+                };
+            }
         }
 
         // OVERALL SCORE
         const validScores = tasksResult.filter((t) => !t.skipped && typeof t.score === 'number').map((t) => t.score);
         const overallScore = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null;
-
+        let overallGrade = overallScore ? overallScore / 10 : null;
         // PDF GENERATION
         let pdf = null;
         let combinedPlainFeedback = '';
@@ -247,7 +304,7 @@ ${t2?.plainFeedback || 'N/A'}`;
             winston.error('PDF generation failed:', err);
         }
 
-        // ✅ FINAL RETURN (DB-READY PAYLOAD)
+        //  FINAL RETURN (DB-READY PAYLOAD)
         return {
             studentWritingAnswer,
             student, // Include student for OpenAI logging
@@ -257,7 +314,8 @@ ${t2?.plainFeedback || 'N/A'}`;
                 combinedReport: finalReport,
                 overall: {
                     overallScore,
-                    overallCheckingStatus: tasksResult.every((t) => t.skipped || t.grade) ? 'complete' : 'partial',
+                    overallGrade,
+                    overallCheckingStatus: tasksResult.every((t) => t.checkingStatus === 'checked') ? 'complete' : 'partial',
                     lastEvaluatedAt: new Date(),
                 },
                 pdf,
@@ -266,7 +324,7 @@ ${t2?.plainFeedback || 'N/A'}`;
         };
     } catch (err) {
         console.log(err);
-        winston.error('❌ Error in IELTS AI evaluation:', err);
+        winston.error(' Error in IELTS AI evaluation:', err);
         return null;
     }
 };
