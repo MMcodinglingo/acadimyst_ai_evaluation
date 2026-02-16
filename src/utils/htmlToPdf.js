@@ -259,8 +259,6 @@ async function generateOETWritingPdf(
     let pdfPath = null;
 
     try {
-        winston.info(`Starting PDF generation for student: ${student._id}, writing answer: ${studentWritingAnswer._id}`);
-
         // 1. Extract student name
         const studentName = student.firstName || student.username || 'Student';
 

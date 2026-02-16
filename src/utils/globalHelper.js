@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const { exec } = require('child_process');
 const winston = require('../config/logger');
+const config = require('../config/config');
 let DEFAULT_MODE = 'OET Medicine';
 /**
  * Extract all linguistic criteria sections

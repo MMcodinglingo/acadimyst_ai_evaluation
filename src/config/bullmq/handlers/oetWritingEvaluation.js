@@ -2,9 +2,9 @@ const writingEvaluation = require('../../../services/oetWritingvaluation.service
 const winston = require('../../logger');
 const { addJob } = require('../../bullmq/queue.manager');
 async function oetWritingEvaluation(job) {
-    let { studentSpeakingAnswer, student, testData, writingText, course } = job.data;
+    let { studentWritingAnswer, student, testData, writingText, course } = job.data;
     let result = await writingEvaluation.handleOetWritingEvaluation({
-        studentSpeakingAnswer,
+        studentWritingAnswer,
         student,
         testData,
         writingText,
@@ -18,7 +18,7 @@ async function oetWritingEvaluation(job) {
 
         // Log successful queueing
         winston.info('Oet Writing evaluation queued successfully via BullMQ', {
-            queue: 'oetWritingEvaluationQueue',
+            queue: 'updateOetWritingDB',
         });
     } catch (queueError) {
         winston.error('There is error in adding Job:=>', queueError);
