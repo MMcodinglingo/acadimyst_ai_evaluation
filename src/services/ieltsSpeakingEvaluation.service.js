@@ -509,7 +509,7 @@ ${report.examiner_feedback || '-'}
                 aiFeedBackHtml: speakingHtml,
                 accessorFeedBackHtml: speakingHtml,
                 // Store complete AI evaluation report (new field - flexible schema)
-                aiEvaluationReport: {
+                ieltsSpeakingReport: {
                     task_relevance: report.task_relevance,
                     scores: report.scores,
                     examiner_feedback: report.examiner_feedback,
