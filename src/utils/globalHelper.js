@@ -902,26 +902,23 @@ function markdownFixesToHtml(raw) {
 /* Helpers function for ielts writing */
 
 function allowStrongDelOnly(s) {
-  const escaped = escapeHtml(s);
-  return escaped
-    .replaceAll('&lt;strong&gt;', '<strong>')
-    .replaceAll('&lt;/strong&gt;', '</strong>')
-    .replaceAll('&lt;del&gt;', '<del>')
-    .replaceAll('&lt;/del&gt;', '</del>');
+    const escaped = escapeHtml(s);
+    return escaped
+        .replaceAll('&lt;strong&gt;', '<strong>')
+        .replaceAll('&lt;/strong&gt;', '</strong>')
+        .replaceAll('&lt;del&gt;', '<del>')
+        .replaceAll('&lt;/del&gt;', '</del>');
 }
 
 function paragraphsToHtmlSafe(text) {
-  const safe = allowStrongDelOnly(text);
-  return safe
-    .split(/\n\s*\n/g)
-    .map(p => p.trim())
-    .filter(Boolean)
-    .map(p => `<p class="fbp">${p}</p>`)
-    .join('');
+    const safe = allowStrongDelOnly(text);
+    return safe
+        .split(/\n\s*\n/g)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => `<p class="fbp">${p}</p>`)
+        .join('');
 }
-
-
-
 
 /**
  * Build task block sections for a single IELTS task
@@ -963,7 +960,9 @@ function buildTaskBlock(label, taskBlock) {
     }
 
     // 7) Examiner Feedback
-    s.push(section(`${label}: Examiner Feedback`, `<div class = "feedback">${paragraphsToHtmlSafe(taskBlock.examiner_feedback || '—')}</div>`));
+    s.push(
+        section(`${label}: Examiner Feedback`, `<div class = "feedback">${paragraphsToHtmlSafe(taskBlock.examiner_feedback || '—')}</div>`)
+    );
 
     return s;
 }
@@ -1421,4 +1420,6 @@ module.exports = {
     todayString,
     processIeltsWritingFeedback,
     prepareCardData,
+    normalizeWords,
+    extractSection,
 };
