@@ -155,7 +155,7 @@ async function handleOetSpeakingEvaluation({ studentSpeakingAnswer, student, spe
         };
     } catch (err) {
         winston.error('OET Speaking Evaluation Error:', err);
-        throw err;
+        throw new Error(err.message || String(err));
     }
 }
 module.exports = {

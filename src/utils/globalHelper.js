@@ -71,7 +71,8 @@ function extractDetailedScores(report) {
 }
 
 async function convertToMp3(inputPath) {
-    const outputPath = inputPath.replace(path.extname(inputPath), '.mp3');
+    const ext = path.extname(inputPath);
+    const outputPath = ext ? inputPath.replace(ext, '.mp3') : `${inputPath}.mp3`;
 
     return new Promise((resolve, reject) => {
         const command = `"${ffmpegPath}" -y -i "${inputPath}" -acodec libmp3lame -b:a 128k -ac 1 "${outputPath}"`;
