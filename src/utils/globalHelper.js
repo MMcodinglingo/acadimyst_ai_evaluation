@@ -88,6 +88,25 @@ async function convertToMp3(inputPath) {
     });
 }
 
+async function compressAudioUnder25MB(inputPath) {
+    const ext = path.extname(inputPath);
+    const outputPath = ext ? inputPath.replace(ext, '_compressed.mp3') : `${inputPath}_compressed.mp3`;
+
+    return new Promise((resolve, reject) => {
+        // 32kbps mono is sufficient for speech transcription and keeps large files well under 25MB
+        const command = `"${ffmpegPath}" -y -i "${inputPath}" -acodec libmp3lame -b:a 32k -ac 1 "${outputPath}"`;
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error('FFmpeg compression error:', stderr);
+                return reject(error);
+            }
+
+            resolve(outputPath);
+        });
+    });
+}
+
 const safeExtractJson = (text, label = 'JSON') => {
     if (!text) throw new Error(`${label}: Empty model output`);
 
@@ -1388,6 +1407,7 @@ module.exports = {
     getOetGrade,
     extractDetailedScores,
     convertToMp3,
+    compressAudioUnder25MB,
     safeExtractJson,
     countFillers,
     countImmediateRepetitions,
