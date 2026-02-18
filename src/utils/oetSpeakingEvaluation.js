@@ -26,11 +26,23 @@ const {
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const step1_WhisperThenDiarizeThenMerge = async (localPath, _filename, rolePlayerCard) => {
+const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayerCard) => {
     try {
-        // Normalize every audio to 32kbps mono MP3 before Whisper:
-        // handles any input format, keeps payload small, no 25MB limit issues
-        const fileToSend = await globalHeper.compressAudioUnder25MB(localPath);
+        const ext = path.extname(filename).toLowerCase();
+        const allowed = ['.mp3', '.mpeg', '.mpga', '.m4a', '.wav', '.webm'];
+        let fileToSend = localPath;
+
+        // Convert if needed
+        if (ext === '.m4a' || !allowed.includes(ext)) {
+            fileToSend = await globalHeper.convertToMp3(localPath);
+        }
+
+        // Compress if file exceeds Whisper's 25MB limit (32kbps mono is sufficient for speech)
+        const stats = fs.statSync(fileToSend);
+        const fileSizeInMB = stats.size / (1024 * 1024);
+        if (fileSizeInMB > 25) {
+            fileToSend = await globalHeper.compressAudioUnder25MB(fileToSend);
+        }
 
         // Helper: Check if language code is English
         const isEnglishLangCode = (langRaw) => {
