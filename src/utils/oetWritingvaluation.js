@@ -17,9 +17,7 @@ const {
     buildOetEvaluationSystemPrompt,
 } = require('../prompts/oetWriting');
 
-
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 
 async function extractTextFromImage({ imageUrl, pageIndex = 0, totalPages = 1 } = {}) {
     try {
@@ -30,30 +28,29 @@ async function extractTextFromImage({ imageUrl, pageIndex = 0, totalPages = 1 } 
         }
 
         const response = await client.chat.completions.create({
-                model: 'gpt-4.1',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            {
-                                // build ocr extraction prompt
-                                type: 'text',
-                                text: buildOCrExtractionPrompt({ pageIndex, totalPages }),
+            model: 'gpt-4.1',
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            // build ocr extraction prompt
+                            type: 'text',
+                            text: buildOCrExtractionPrompt({ pageIndex, totalPages }),
+                        },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: imageUrl,
+                                detail: 'high',
                             },
-                            {
-                                type: 'image_url',
-                                image_url: {
-                                    url: imageUrl,
-                                    detail: 'high',
-                                },
-                            },
-                        ],
-                    },
-                ],
-                temperature: 0,
-                max_tokens: 2000,
-            },
-        );
+                        },
+                    ],
+                },
+            ],
+            temperature: 0,
+            max_tokens: 2000,
+        });
 
         return response?.choices?.[0]?.message?.content?.trim() || '';
     } catch (err) {
@@ -62,7 +59,7 @@ async function extractTextFromImage({ imageUrl, pageIndex = 0, totalPages = 1 } 
             code: err.code,
             imageUrl: imageUrl?.substring?.(0, 100), // Log truncated URL for debugging
             status: err.status,
-            data:err.error,
+            data: err.error,
         });
         return ''; // Return empty string instead of undefined
     }
@@ -77,25 +74,23 @@ async function correctOcrText(ocrText) {
         const systemPrompt = buildOcrCorrectionSystemPrompt();
 
         const response = await client.chat.completions.create({
-                model: 'gpt-4.1',
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt,
-                    },
-                    {
-                        role: 'user',
-                        content: `Correct the following OCR text per the rules. Return only the corrected text.
+            model: 'gpt-4.1',
+            messages: [
+                {
+                    role: 'system',
+                    content: systemPrompt,
+                },
+                {
+                    role: 'user',
+                    content: `Correct the following OCR text per the rules. Return only the corrected text.
 
 <<<OCR_TEXT_START
 ${ocrText}
 OCR_TEXT_END>>>`,
-                    },
-                ],
-                temperature: 0,
-            }
-        
-        );
+                },
+            ],
+            temperature: 0,
+        });
 
         return response?.choices?.[0]?.message?.content?.trim();
     } catch (err) {
@@ -130,21 +125,20 @@ const handleProcessCaseNotes = async (caseNotes) => {
         const processingPrompt = buildCaseNotesProcessingPrompt(fileContent);
 
         const response = await client.chat.completions.create({
-                model: 'o3',
-                messages: [
-                    {
-                        role: 'system',
-                        content: processingPrompt,
-                    },
-                    {
-                        role: 'user',
-                        content: 'Please analyze these case notes and extract relevant information for OET Writing assessment.',
-                    },
-                ],
-                // temperature: 0,
-                // max_tokens: 2000
-            }
-        );
+            model: 'o3',
+            messages: [
+                {
+                    role: 'system',
+                    content: processingPrompt,
+                },
+                {
+                    role: 'user',
+                    content: 'Please analyze these case notes and extract relevant information for OET Writing assessment.',
+                },
+            ],
+            // temperature: 0,
+            // max_tokens: 2000
+        });
         const content = response?.choices?.[0]?.message?.content;
         // Guard: Validate response structure
         if (!content) {
@@ -177,25 +171,23 @@ const handleOETEvaluation = async (correctedText, processedCaseNotes) => {
         const oetPrompt = buildOetEvaluationSystemPrompt();
 
         // Prepare the evaluation content
-        let evaluationContent = buildOetEvaluationUserContent(correctedText, processedCaseNotes);
+        let evaluationContent = buildOetEvaluationUserContent({ correctedText, processedCaseNotes });
 
         const response = await client.chat.completions.create({
-                model: 'gpt-4o',
-                messages: [
-                    {
-                        role: 'system',
-                        content: oetPrompt,
-                    },
-                    {
-                        role: 'user',
-                        content: evaluationContent,
-                    },
-                ],
+            model: 'gpt-4o',
+            messages: [
+                {
+                    role: 'system',
+                    content: oetPrompt,
+                },
+                {
+                    role: 'user',
+                    content: evaluationContent,
+                },
+            ],
 
-                seed: 12345,
-            }
-
-        );
+            seed: 12345,
+        });
 
         // Guard: Validate response structure
         const content = response?.choices?.[0]?.message?.content;

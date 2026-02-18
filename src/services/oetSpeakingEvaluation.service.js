@@ -12,7 +12,7 @@ const {
 const { getOetGrade, prepareCardData } = require('../utils/globalHelper');
 const htmlToPdf = require('../utils/htmlToPdf.js');
 
-async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speakingAudios, speakingMainCards, speakingCards) {
+async function handleOetSpeakingEvaluation({ studentSpeakingAnswer, student, speakingAudios, speakingMainCards, speakingCards }) {
     try {
         let studentFullName = student.fullName;
 
@@ -155,7 +155,7 @@ async function handleOetSpeakingEvaluation(studentSpeakingAnswer, student, speak
         };
     } catch (err) {
         winston.error('OET Speaking Evaluation Error:', err);
-        throw err;
+        throw new Error(err.message || String(err));
     }
 }
 module.exports = {

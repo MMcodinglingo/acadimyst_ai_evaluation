@@ -500,19 +500,6 @@ ${
 
 function buildSpeakingReportUserPrompt(ctx) {
     const {
-        doctorSpeakingSeconds = 0,
-        wpm = 0,
-        wer = 0,
-        fillerCount = 0,
-        repetitionCount = 0,
-        fragmentCount = 0,
-        avgConfidenceEmotionScore = 0,
-    } = metrics;
-
-    const sb = silences?.sb || {};
-    const cd = silences?.cd || {};
-
-    const {
         doctorName = 'Dr. Unknown',
         roleCardsText = 'N/A',
         transcriptText = 'N/A',
@@ -530,6 +517,19 @@ function buildSpeakingReportUserPrompt(ctx) {
         metrics = {},
         silences = {},
     } = ctx || {};
+
+    const {
+        doctorSpeakingSeconds = 0,
+        wpm = 0,
+        wer = 0,
+        fillerCount = 0,
+        repetitionCount = 0,
+        fragmentCount = 0,
+        avgConfidenceEmotionScore = 0,
+    } = metrics;
+
+    const sb = silences?.sb || {};
+    const cd = silences?.cd || {};
 
     return `
 ROLE PLAY CARDS (context for appropriateness + clinical communication):

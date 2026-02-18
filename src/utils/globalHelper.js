@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const { exec } = require('child_process');
 const winston = require('../config/logger');
+const config = require('../config/config');
 let DEFAULT_MODE = 'OET Medicine';
 /**
  * Extract all linguistic criteria sections
@@ -70,7 +71,8 @@ function extractDetailedScores(report) {
 }
 
 async function convertToMp3(inputPath) {
-    const outputPath = inputPath.replace(path.extname(inputPath), '.mp3');
+    const ext = path.extname(inputPath);
+    const outputPath = ext ? inputPath.replace(ext, '.mp3') : `${inputPath}.mp3`;
 
     return new Promise((resolve, reject) => {
         const command = `"${ffmpegPath}" -y -i "${inputPath}" -acodec libmp3lame -b:a 128k -ac 1 "${outputPath}"`;
@@ -78,6 +80,25 @@ async function convertToMp3(inputPath) {
         exec(command, (error, stdout, stderr) => {
             if (error) {
                 console.error('FFmpeg conversion error:', stderr);
+                return reject(error);
+            }
+
+            resolve(outputPath);
+        });
+    });
+}
+
+async function compressAudioUnder25MB(inputPath) {
+    const ext = path.extname(inputPath);
+    const outputPath = ext ? inputPath.replace(ext, '_compressed.mp3') : `${inputPath}_compressed.mp3`;
+
+    return new Promise((resolve, reject) => {
+        // 32kbps mono is sufficient for speech transcription and keeps large files well under 25MB
+        const command = `"${ffmpegPath}" -y -i "${inputPath}" -acodec libmp3lame -b:a 32k -ac 1 "${outputPath}"`;
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error('FFmpeg compression error:', stderr);
                 return reject(error);
             }
 
@@ -1386,6 +1407,7 @@ module.exports = {
     getOetGrade,
     extractDetailedScores,
     convertToMp3,
+    compressAudioUnder25MB,
     safeExtractJson,
     countFillers,
     countImmediateRepetitions,
@@ -1419,4 +1441,6 @@ module.exports = {
     todayString,
     processIeltsWritingFeedback,
     prepareCardData,
+    normalizeWords,
+    extractSection,
 };

@@ -13,7 +13,7 @@ const handleOetWritingEvaluation = async ({ studentWritingAnswer, student, testD
 
     //  NEW LOGIC - Process all images if multiple pages
 
-    if (studentWritingAnswer.isPictureBased) {
+    if (studentWritingAnswer?.isPictureBased) {
         const images = studentWritingAnswer.writingImage || [];
         const totalPages = images.length;
         let combinedOcrText = '';

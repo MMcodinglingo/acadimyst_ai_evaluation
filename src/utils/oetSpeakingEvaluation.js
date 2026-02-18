@@ -1,8 +1,10 @@
 const path = require('path');
 const fs = require('fs');
-
+const axios = require('axios');
+const FormData = require('form-data');
 const OpenAI = require('openai');
 const globalHeper = require('../utils/globalHelper');
+const config = require('../config/config');
 // const e = require('cors');
 const fileToBase64 = (filePath) => {
     const fileData = fs.readFileSync(filePath);
@@ -24,24 +26,11 @@ const {
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayerCard) => {
+const step1_WhisperThenDiarizeThenMerge = async (localPath, _filename, rolePlayerCard) => {
     try {
-        const ext = path.extname(filename).toLowerCase();
-        const allowed = ['.mp3', '.mpeg', '.mpga', '.m4a', '.wav', '.webm'];
-        let fileToSend = localPath;
-
-        // Check file size
-        const stats = fs.statSync(localPath);
-        const fileSizeInMB = stats.size / (1024 * 1024);
-
-        if (fileSizeInMB > 25) {
-            throw new Error(`File too large: ${fileSizeInMB.toFixed(2)}MB (max 25MB)`);
-        }
-
-        // Convert if needed
-        if (ext === '.m4a' || !allowed.includes(ext)) {
-            fileToSend = await globalHeper.convertToMp3(localPath);
-        }
+        // Normalize every audio to 32kbps mono MP3 before Whisper:
+        // handles any input format, keeps payload small, no 25MB limit issues
+        const fileToSend = await globalHeper.compressAudioUnder25MB(localPath);
 
         // Helper: Check if language code is English
         const isEnglishLangCode = (langRaw) => {
@@ -134,13 +123,14 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
         form1.append('response_format', 'verbose_json');
         form1.append('timestamp_granularities[]', 'segment');
 
-        let whisperJson = await client.audio.transcriptions.create({
-            model: 'whisper-1',
-            file: fs.createReadStream(fileToSend),
-            response_format: 'verbose_json',
-            timestamp_granularities: ['segment'],
+        const whisperRes1 = await axios.post('https://api.openai.com/v1/audio/transcriptions', form1, {
+            headers: {
+                Authorization: `Bearer ${config.OPENAI_API_KEY}`,
+                ...form1.getHeaders(),
+            },
         });
 
+        let whisperJson = whisperRes1.data;
         let detectedLangRaw = String(whisperJson?.language || '').trim();
         const whisperText = String(whisperJson?.text || '').trim();
 
@@ -149,7 +139,7 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
 
         //  STEP 1b: If Whisper detected non-English, verify with forced English retry
         if (!whisperEnglish && !whisperLooksEnglish) {
-            console.log(`⚠️ Whisper detected non-English (${detectedLangRaw}). Retrying with forced English...`);
+            console.log(` Whisper detected non-English (${detectedLangRaw}). Retrying with forced English...`);
 
             const form2 = new FormData();
             form2.append('file', fs.createReadStream(fileToSend), {
@@ -161,13 +151,14 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
             form2.append('timestamp_granularities[]', 'segment');
             form2.append('language', 'en'); //  Force English
 
-            const whisperJson2 = await client.audio.transcriptions.create({
-                model: 'whisper-1',
-                file: fs.createReadStream(fileToSend),
-                response_format: 'verbose_json',
-                timestamp_granularities: ['segment'],
-                language: 'en', // Force English
+            const whisperRes2 = await axios.post('https://api.openai.com/v1/audio/transcriptions', form2, {
+                headers: {
+                    Authorization: `Bearer ${config.OPENAI_API_KEY}`,
+                    ...form2.getHeaders(),
+                },
             });
+
+            const whisperJson2 = whisperRes2.data;
             const detectedLangRaw2 = String(whisperJson2?.language || '').trim();
             const whisperText2 = String(whisperJson2?.text || '').trim();
             const whisperLooksEnglish2 = looksEnglishText(whisperText2);
@@ -212,11 +203,11 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
         const base64Audio = fileToBase64(audioFileForDiarization);
         const diarizationExt = path.extname(audioFileForDiarization).replace('.', '');
 
-        const diarizeSystem = buildDiarizeSystemPrompt(detectedLangRaw);
+        const diarizeSystem = buildDiarizeSystemPrompt({ detectedLangRaw });
         const roleCardsText = JSON.stringify(rolePlayerCard, null, 2);
         console.log('Role Cards:', roleCardsText);
 
-        const diarizeUser = buildDiarizeUserPrompt(whisperSegments, detectedLangRaw, roleCardsText);
+        const diarizeUser = buildDiarizeUserPrompt({ detectedLangRaw, rolePlayerCard: roleCardsText, whisperSegments });
 
         const diarizePayload = {
             model: 'gpt-4o-audio-preview',
@@ -240,11 +231,25 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
             ],
         };
 
-        const diarizeJson = await client.chat.completions.create(diarizePayload);
+        const diarizeRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${config.OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify(diarizePayload),
+        });
+
+        if (!diarizeRes.ok) {
+            const error = await diarizeRes.text();
+            throw new Error(`Diarization API error: ${error}`);
+        }
+
+        const diarizeJson = await diarizeRes.json();
         const diarizeContent = diarizeJson?.choices?.[0]?.message?.content || '';
         let diarizeObj = globalHeper.safeExtractJson(diarizeContent, 'Diarization');
 
-        //  If diarize returns NON_ENGLISH_AUDIO, fallback to Whisper-only turns
+        // If diarize returns NON_ENGLISH_AUDIO, fallback to Whisper-only turns
         if (diarizeObj?.error === 'NON_ENGLISH_AUDIO') {
             console.warn(' Diarize returned NON_ENGLISH_AUDIO. Falling back to Whisper-only turns.');
             diarizeObj = buildWhisperFallbackDiarizeObj(whisperSegments);
@@ -257,9 +262,9 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
 
         const mergeSystem = buildMergeSystemPrompt();
 
-        const mergeUser = buildMergeUserPrompt(whisperSegments, diarizeObj);
+        const mergeUser = buildMergeUserPrompt({ whisperOutput: whisperSegments, diarizationOutput: diarizeObj });
 
-        const mergeJson = await client.chat.completions.create({
+        const mergeBody = {
             model: 'gpt-4o',
             temperature: 0,
             max_tokens: 6000,
@@ -268,8 +273,23 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
                 { role: 'system', content: mergeSystem },
                 { role: 'user', content: mergeUser },
             ],
+        };
+
+        const mergeRes = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${config.OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify(mergeBody),
         });
 
+        if (!mergeRes.ok) {
+            const error = await mergeRes.text();
+            throw new Error(`Merge API error: ${error}`);
+        }
+
+        const mergeJson = await mergeRes.json();
         const mergeContent = mergeJson?.choices?.[0]?.message?.content || '';
         let finalObj = globalHeper.safeExtractJson(mergeContent, 'Merge');
 
@@ -311,7 +331,6 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
         throw err;
     }
 };
-
 const generateIntelligibilityReport_DoctorOnly = async (step1FinalJson, rolePlayerCard, transcript) => {
     if (!step1FinalJson?.turns?.length) throw new Error('Run Step 1 first.');
 
@@ -435,7 +454,7 @@ Use these cues only as SUPPORT. The main evidence MUST be transcript quotes + ti
 
         const relevanceSystem = buildFinalReviewSystemPrompt();
 
-        const relevanceUser = buildRelevanceUserPrompt(roleCardsText, transcriptText, doctorRefText);
+        const relevanceUser = buildRelevanceUserPrompt({ roleCardsText, transcript: transcriptText, doctorRefText });
 
         const relevanceJson = await client.chat.completions.create({
             model: 'gpt-4o',
@@ -505,7 +524,7 @@ OET Grade: E
         );
 
         // Build System Prompt
-        const systemPrompt = buildSpeakingReportSystemPrompt(
+        const systemPrompt = buildSpeakingReportSystemPrompt({
             roleCardsText,
             transcriptText,
             doctorName,
@@ -517,8 +536,8 @@ OET Grade: E
             cd,
             emotionsSortedLine,
             wpm,
-            wer
-        );
+            wer,
+        });
 
         console.log('Step 4: Generating intelligibility report...');
 
