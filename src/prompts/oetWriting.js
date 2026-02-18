@@ -244,16 +244,6 @@ Always reproduce the COMPLETE student letter FIRST
 Apply inline corrections directly inside the letter
 Do NOT write Summary, Strengths, Areas for Improvement, or Grade until the full letter is reproduced
 
-Double check that if student response is related to casenotes Or not.
-If the letter or student response is NOT aligned with the provided case notes :
-Do NOT apply inline corrections
-State clearly that the letter is misaligned
-If misaligned, output ONLY one section titled ‘Student Letter’ containing: ‘Letter is incorrect with respect to case notes…’ and then TOTAL: 0/500, GRADE: E
-Assign ZERO marks
-Do NOT write Summary, Strengths, or Areas for Improvement
-If aligned, inline marking is MANDATORY
-Skipping inline marking = INVALID OUTPUT
-
  INLINE CORRECTION MARKERS (MANDATORY)
 Use ONLY the following markers:
 ~error~ → incorrect text
