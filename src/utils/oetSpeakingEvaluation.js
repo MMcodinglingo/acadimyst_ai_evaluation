@@ -32,17 +32,16 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
         const allowed = ['.mp3', '.mpeg', '.mpga', '.m4a', '.wav', '.webm'];
         let fileToSend = localPath;
 
-        // Check file size
-        const stats = fs.statSync(localPath);
-        const fileSizeInMB = stats.size / (1024 * 1024);
-
-        if (fileSizeInMB > 25) {
-            throw new Error(`File too large: ${fileSizeInMB.toFixed(2)}MB (max 25MB)`);
-        }
-
         // Convert if needed
         if (ext === '.m4a' || !allowed.includes(ext)) {
             fileToSend = await globalHeper.convertToMp3(localPath);
+        }
+
+        // Compress if file exceeds Whisper's 25MB limit (32kbps mono is sufficient for speech)
+        const stats = fs.statSync(fileToSend);
+        const fileSizeInMB = stats.size / (1024 * 1024);
+        if (fileSizeInMB > 25) {
+            fileToSend = await globalHeper.compressAudioUnder25MB(fileToSend);
         }
 
         // Helper: Check if language code is English
