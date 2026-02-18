@@ -134,12 +134,11 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
         form1.append('response_format', 'verbose_json');
         form1.append('timestamp_granularities[]', 'segment');
 
-
-                let whisperJson = await client.audio.transcriptions.create({
-             model: 'whisper-1',
-             file:fs.createReadStream(fileToSend),
-             response_format: 'verbose_json',
-             timestamp_granularities: ['segment'],
+        let whisperJson = await client.audio.transcriptions.create({
+            model: 'whisper-1',
+            file: fs.createReadStream(fileToSend),
+            response_format: 'verbose_json',
+            timestamp_granularities: ['segment'],
         });
 
         let detectedLangRaw = String(whisperJson?.language || '').trim();
@@ -162,17 +161,13 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
             form2.append('timestamp_granularities[]', 'segment');
             form2.append('language', 'en'); //  Force English
 
-
-
             const whisperJson2 = await client.audio.transcriptions.create({
-
                 model: 'whisper-1',
-                file:fs.createReadStream(fileToSend),
+                file: fs.createReadStream(fileToSend),
                 response_format: 'verbose_json',
                 timestamp_granularities: ['segment'],
                 language: 'en', // Force English
-            })
-;
+            });
             const detectedLangRaw2 = String(whisperJson2?.language || '').trim();
             const whisperText2 = String(whisperJson2?.text || '').trim();
             const whisperLooksEnglish2 = looksEnglishText(whisperText2);
@@ -223,7 +218,6 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
 
         const diarizeUser = buildDiarizeUserPrompt(whisperSegments, detectedLangRaw, roleCardsText);
 
-
         const diarizePayload = {
             model: 'gpt-4o-audio-preview',
             modalities: ['text'],
@@ -250,7 +244,6 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
         const diarizeContent = diarizeJson?.choices?.[0]?.message?.content || '';
         let diarizeObj = globalHeper.safeExtractJson(diarizeContent, 'Diarization');
 
-
         //  If diarize returns NON_ENGLISH_AUDIO, fallback to Whisper-only turns
         if (diarizeObj?.error === 'NON_ENGLISH_AUDIO') {
             console.warn(' Diarize returned NON_ENGLISH_AUDIO. Falling back to Whisper-only turns.');
@@ -266,7 +259,6 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
 
         const mergeUser = buildMergeUserPrompt(whisperSegments, diarizeObj);
 
-
         const mergeJson = await client.chat.completions.create({
             model: 'gpt-4o',
             temperature: 0,
@@ -277,8 +269,6 @@ const step1_WhisperThenDiarizeThenMerge = async (localPath, filename, rolePlayer
                 { role: 'user', content: mergeUser },
             ],
         });
-
-
 
         const mergeContent = mergeJson?.choices?.[0]?.message?.content || '';
         let finalObj = globalHeper.safeExtractJson(mergeContent, 'Merge');
@@ -445,20 +435,17 @@ Use these cues only as SUPPORT. The main evidence MUST be transcript quotes + ti
 
         const relevanceSystem = buildFinalReviewSystemPrompt();
 
-        const relevanceUser = buildRelevanceUserPrompt(roleCardsText, transcriptText,doctorRefText);
-        
+        const relevanceUser = buildRelevanceUserPrompt(roleCardsText, transcriptText, doctorRefText);
 
         const relevanceJson = await client.chat.completions.create({
-
-                model: 'gpt-4o',
-                temperature: 0,
-                max_tokens: 500,
-                response_format: { type: 'json_object' },
-                messages: [
-                    { role: 'system', content: relevanceSystem },
-                    { role: 'user', content: relevanceUser },
-                ],
-
+            model: 'gpt-4o',
+            temperature: 0,
+            max_tokens: 500,
+            response_format: { type: 'json_object' },
+            messages: [
+                { role: 'system', content: relevanceSystem },
+                { role: 'user', content: relevanceUser },
+            ],
         });
 
         // const relevanceJson = await relevanceRes.json();
@@ -514,10 +501,10 @@ OET Grade: E
             wpm,
             wer,
             emotionsSortedLine,
-            avgConfidenceEmotionScore,);
+            avgConfidenceEmotionScore
+        );
 
-
-            // Build System Prompt
+        // Build System Prompt
         const systemPrompt = buildSpeakingReportSystemPrompt(
             roleCardsText,
             transcriptText,
@@ -530,23 +517,20 @@ OET Grade: E
             cd,
             emotionsSortedLine,
             wpm,
-            wer,
+            wer
         );
 
         console.log('Step 4: Generating intelligibility report...');
 
-
         const j = await client.chat.completions.create({
-
-                model: 'gpt-4o',
-                temperature: 0,
-                max_tokens: 6500,
-                seed: 12345,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt },
-                ],
-
+            model: 'gpt-4o',
+            temperature: 0,
+            max_tokens: 6500,
+            seed: 12345,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
         });
 
         const choice = j?.choices?.[0];
