@@ -390,39 +390,74 @@
 
             /* ================= PDF PRINT CONTROL (Avoid breaking sections) ================= */
 @media print {
+  /* ===== PAGE SETUP ===== */
+  @page {
+    margin: 14mm 12mm 20mm 12mm; /* bottom margin bigger to reserve footer space */
+  }
+
   body {
     background: #fff !important;
     margin: 0 !important;
     padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Avoid splitting key blocks */
+  /* ===== IMPORTANT: DO NOT MAKE BIG WRAPPERS UNBREAKABLE =====
+     If you make .section / wrappers "avoid", Chrome will push them to next page,
+     causing blank pages and weird layout.
+  */
   .section,
-  .result-segment-wrap,
-  .result-card,
-  .rubric-wrap,
-  .rubric-row,
-  .info-strip,
+  .result-wrap,
+  .assessment-grid,
+  #letter,
+  #letter .content {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  /* Keep paragraphs readable in PDF */
+  #letter,
+  #letter .content,
+  .content {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* ===== KEEP SMALL BLOCKS TOGETHER ===== */
   .header,
-  .report-footer {
+  .student-info,
+  .final-result,
+  .grade-legend,
+  .assessment-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  /* Avoid splitting lists and tables */
-  ul, ol, li,
-  table, thead, tbody, tr, td, th {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
+  /* ===== LISTS & TABLES: allow breaking inside if they are long =====
+     Setting "avoid" on li/tr can also cause big jumps when they don't fit.
+     Use "auto" so long tables/lists can flow.
+  */
+  ul,
+  ol,
+  table,
+  thead,
+  tbody,
+  tr,
+  td,
+  th {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 
-  /* Remove shadows that can look odd in PDF */
-  .section,
-  .result-card {
+  /* ===== CLEAN LOOK IN PDF ===== */
+  .assessment-card,
+  .final-result,
+  .section {
     box-shadow: none !important;
   }
 
-  /* ===== RED FOOTER ON EVERY PAGE ===== */
+  /* ===== FOOTER ON EVERY PAGE ===== */
   .report-footer {
     position: fixed !important;
     left: 0 !important;
@@ -430,17 +465,18 @@
     bottom: 0 !important;
     margin: 0 !important;
     border-radius: 0 !important;
-    background: var(--brand) !important;
+    background: #9d2235 !important; /* replace var(--brand) */
     color: #fff !important;
-    padding: 12px 18px !important;
+    padding: 10px 18px !important;
     z-index: 9999 !important;
   }
 
-  /* Leave space so footer doesn't overlap content */
+  /* Reserve enough space so footer never overlaps the last lines */
   #reportRoot {
-    padding-bottom: 14mm !important;
+    padding-bottom: 22mm !important; /* must be >= footer height */
   }
 }
+
 
         </style>
     </head>
