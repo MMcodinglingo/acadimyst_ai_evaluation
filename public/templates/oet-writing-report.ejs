@@ -45,7 +45,7 @@
             .report {
                 border: 1px solid var(--border);
                 border-radius: 14px;
-                overflow: hidden;
+                overflow: visible !important;
                 background: white;
             }
 
@@ -392,7 +392,7 @@
 @media print {
   /* ===== PAGE SETUP ===== */
   @page {
-    margin: 14mm 12mm 20mm 12mm; /* bottom margin bigger to reserve footer space */
+    margin: 14mm 12mm 30mm 12mm; /* bottom margin bigger to reserve footer space */
   }
 
   body {
@@ -463,17 +463,19 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    margin: 0 !important;
+    height: 18mm !important;
+    align-items: center !important;
+    justify-content: center !important;
     border-radius: 0 !important;
     background: #9d2235 !important; /* replace var(--brand) */
     color: #fff !important;
-    padding: 10px 18px !important;
+    padding: 0px 18px !important;
     z-index: 9999 !important;
   }
 
   /* Reserve enough space so footer never overlaps the last lines */
   #reportRoot {
-    padding-bottom: 22mm !important; /* must be >= footer height */
+    padding-bottom: 28mm !important; /* must be >= footer height */
   }
 }
 
@@ -570,11 +572,6 @@
                         </div>
                         <% } %>
                     </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="report-footer" id="reportFooter">
-                    <small>MM Coding and M&amp;M Institute</small>
                 </div>
             </div>
         </div>
