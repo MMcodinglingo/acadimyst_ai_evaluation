@@ -1,6 +1,6 @@
-const { status } = require('http-status');
 const oetWritingEvaluationService = require('../services/oetWritingvaluation.service');
 const oetSpeakingEvaluationService = require('../services/oetSpeakingEvaluation.service');
+
 const handleOetSpeakingEvaluation = async (req, res, next) => {
     try {
         const { speakingAudios, studentSpeakingAnswer, speakingParts, student, speakingMainCard, speakingCard } = req.body;
@@ -14,16 +14,17 @@ const handleOetSpeakingEvaluation = async (req, res, next) => {
             speakingCard
         );
 
-        return res.status(status[201]).json(res, {
+        // REMOVED 'res' from inside .json()
+        return res.status(201).json({
             success: 1,
-            message: 'OET Speaking Evaluation processed successfully......',
+            message: 'OET Speaking Evaluation processed successfully.',
             data: {
                 resp,
             },
         });
     } catch (error) {
-
-        return res.status(status[500]).json(res, {
+        // REMOVED 'res' from inside .json()
+        return res.status(500).json({
             success: 0,
             message: error?.message || 'Something went wrong. Please try again',
             data: {},
@@ -43,7 +44,8 @@ const handleOetWritingEvaluation = async (req, res, next) => {
             course,
         });
 
-        return res.status(status[201]).json(res, {
+        // REMOVED 'res' from inside .json()
+        return res.status(201).json({
             success: 1,
             message: 'OET Writing Evaluation processed successfully.',
             data: {
@@ -51,9 +53,10 @@ const handleOetWritingEvaluation = async (req, res, next) => {
             },
         });
     } catch (error) {
-        return res.status(status[500]).json({
+        // Standardized error response
+        return res.status(500).json({
             success: 0,
-            message: error?.message ||  'Something went wrong. Please try again',
+            message: error?.message || 'Something went wrong. Please try again',
             data: {},
         });
     }

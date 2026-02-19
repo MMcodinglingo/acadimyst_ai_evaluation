@@ -38,13 +38,13 @@ async function generatePDF(html, writingAnswerId, fileName) {
             printBackground: true,
 
             //  must be TRUE to show footer on every page
-            displayHeaderFooter: false,
+            displayHeaderFooter: true,
 
             //  reserve space for footer
             margin: {
-                top: '15mm',
+                top: '14mm',
                 right: '12mm',
-                bottom: '22mm',
+                bottom: '30mm',
                 left: '12mm',
             },
 
@@ -57,7 +57,7 @@ async function generatePDF(html, writingAnswerId, fileName) {
         font-size:10px;
         font-weight:700;
         text-align:center;
-        padding:8px 0;
+        padding:6px 0;
         border-radius:8px;
       ">
         MM Coding and M&amp;M Institute
@@ -342,13 +342,43 @@ async function generateOETWritingPdf(
             path: pdfPath,
             format: 'A4',
             printBackground: true,
+            displayHeaderFooter: true,
+
+             headerTemplate: '<div></div>',
+
+            footerTemplate: `
+    <div style="width:100%; padding:0 12mm; box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+      <div style="
+        background:#9d2235;
+        color:#fff;
+        box-sizing:border-box;
+        font-size:12px;
+        font-weight:700;
+        text-align:center;
+        padding:10px 14px;
+        border-radius:10px;
+        line-height:1;
+        display:flex;
+        justify-content:center;
+        position:relative;
+        width:100%;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+      ">
+        MM Coding and M&amp;M Institute
+        <span style="position:absolute; right:14px; top:50% font-weight:700; transform:translate(-50%)">
+          <span class="pageNumber"></span>/<span class="totalPages"></span>
+        </span>
+      </div>
+    </div>
+  `,
             margin: {
-                top: '10px',
-                right: '10px',
-                bottom: '10px',
-                left: '10px',
+                top: '14mm',
+                right: '12mm',
+                bottom: '30mm',
+                left: '12mm',
             },
-            preferCSSPageSize: false,
+            preferCSSPageSize: true,
         });
 
         await browser.close();
