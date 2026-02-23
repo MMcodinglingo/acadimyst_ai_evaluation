@@ -84,7 +84,7 @@ const createWorker = (queueName, processor, options = {}) => {
         });
 
         worker.on('completed', (job, result) => {
-            winston.info(`Job completed: ${job.id}`, {
+            winston.info(`✅ Job completed: ${job.id}`, {
                 service: 'BullMQ',
                 queue: queueName,
                 jobId: job.id,
@@ -184,7 +184,7 @@ const closeWorker = async (queueName) => {
 
             delete workerRegistry[queueName];
 
-            winston.info(`Worker closed: ${queueName}`, {
+            winston.info(`✅ Worker closed: ${queueName}`, {
                 service: 'BullMQ',
                 queue: queueName,
             });
@@ -205,7 +205,7 @@ const closeAllWorkers = async () => {
             await closeWorker(queueName);
         }
 
-        winston.info('All workers closed', { service: 'BullMQ' });
+        winston.info('✅ All workers closed', { service: 'BullMQ' });
     } catch (error) {
         winston.error('❌ Error closing all workers', {
             service: 'BullMQ',

@@ -31,9 +31,7 @@
     "openai": "^6.16.0",
     "puppeteer": "^24.36.1",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0",
-    "zod": "^4.3.6",
-    "zod-to-json-schema": "^3.25.1"
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

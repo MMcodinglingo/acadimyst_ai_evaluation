@@ -117,7 +117,7 @@ const safeExtractJson = (text, label = 'JSON') => {
 
     cleaned = cleaned.replace(/[""]/g, '"').replace(/['']/g, "'");
 
-    // FIXED: Complete implementation
+    // ✅ FIXED: Complete implementation
     const extractBalancedObject = (s) => {
         const start = s.indexOf('{');
         if (start === -1) return null;
@@ -630,7 +630,7 @@ function patchScoreInHtml(html, meta) {
 }
 // -------------------- HELPERS --------------------
 function escapeHtml(str) {
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function extractLetterBlock(content) {
@@ -775,7 +775,7 @@ function extractAssessmentMeta(content) {
 
     return { totalScore, totalOutOf, result, grade };
 }
-// Assessment is everything from SUMMARY onward
+// ✅ Assessment is everything from SUMMARY onward
 function getAssessmentOnly(content) {
     const c = String(content || '');
     const idx = c.search(/\*\*SUMMARY\*\*/i);

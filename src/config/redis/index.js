@@ -79,7 +79,7 @@ const initialize = async (config) => {
             } catch (error) {
                 console.log('BullMQ initialization failed', {
                     service: 'BullMQ',
-                    error: error,
+                    error: error.message,
                 });
                 result.bullmq = {
                     status: 'failed',
