@@ -231,6 +231,341 @@ ${fileContent}
 - Be specific (don't say "medications" - list each one)`;
 }
 
+// ─────────────────────────────────────────────────────────
+// MULTI-STEP EVALUATION PROMPTS
+// ─────────────────────────────────────────────────────────
+
+function buildRelevanceCheckPrompt() {
+    return `You are an OET examiner performing a RELEVANCE PRE-CHECK before evaluation.
+
+PURPOSE: Catch cases where a student accidentally submits an answer for the WRONG test. This is a SAFETY NET, NOT a quality check.
+
+YOUR DEFAULT VERDICT IS "relevant". You should ONLY override this to "completely_irrelevant" when you are 100% certain the letter is about a COMPLETELY DIFFERENT patient AND clinical scenario.
+
+STEP 1 — Extract identifiers from the CASE NOTES:
+- Patient name (or description if unnamed)
+- Primary condition/diagnosis
+- Letter type (referral / discharge / transfer / update)
+- Intended recipient (GP / specialist / nurse / other)
+
+STEP 2 — Extract the SAME identifiers from the STUDENT'S LETTER:
+- Who does the letter discuss?
+- What condition/diagnosis is mentioned?
+- What type of letter is it?
+- Who is it addressed to?
+
+STEP 3 — Compare and determine relevance:
+
+VERDICT RULES:
+
+"relevant" (DEFAULT — use this unless you are certain otherwise):
+- The letter discusses the SAME or SIMILAR patient and clinical scenario
+- The patient name matches (even partially or with spelling errors)
+- The general medical condition/scenario overlaps
+- ANY of the above match → verdict is "relevant"
+- Details may be wrong, missing, or fabricated — STILL "relevant"
+- Wrong letter type but right patient — STILL "relevant"
+- Wrong recipient but right patient — STILL "relevant"
+- Poor quality letter about right case — STILL "relevant"
+
+"partially_relevant":
+- Significant mismatch in letter type or recipient, but patient/condition clearly matches
+- This is an edge case — when in doubt, use "relevant" instead
+
+"completely_irrelevant" (USE WITH EXTREME CAUTION — ONLY when 100% certain):
+- REQUIRES BOTH: different patient name AND different clinical condition/scenario
+- The letter is CLEARLY about a TOTALLY DIFFERENT case
+- Example: Case notes = "Mr. Smith, knee replacement surgery" but letter = "Mrs. Jones, diabetes management"
+- Example: Case notes = "child with asthma" but letter = "elderly patient with cardiac arrest"
+
+MANDATORY ANTI-FALSE-POSITIVE RULES:
+1. If the patient name matches OR is similar (even with spelling errors) → verdict MUST be "relevant"
+2. If the clinical condition overlaps even partially → verdict MUST be "relevant"
+3. If you can see ANY connection between the letter and case notes → verdict MUST be "relevant"
+4. If the case notes mention the condition and the letter also mentions it → "relevant"
+5. A bad letter about the right case is NEVER "completely_irrelevant"
+6. Fabricated details about the right patient = "relevant"
+7. Missing information = "relevant"
+8. If you have ANY doubt → "relevant"
+9. WHEN IN DOUBT, ALWAYS choose "relevant" — a false positive (marking a correct letter as irrelevant) is FAR WORSE than a false negative
+
+OUTPUT FORMAT (STRICT — JSON)
+{
+  "caseNotesIdentifiers": {
+    "patientName": "name from case notes",
+    "primaryCondition": "main diagnosis/condition",
+    "letterType": "referral/discharge/transfer/update",
+    "intendedRecipient": "who the letter should be addressed to"
+  },
+  "letterIdentifiers": {
+    "patientName": "name from student letter",
+    "primaryCondition": "condition discussed in letter",
+    "letterType": "type of letter written",
+    "addressedTo": "who the letter is addressed to"
+  },
+  "verdict": "relevant / partially_relevant / completely_irrelevant",
+  "confidence": "high / low",
+  "reason": "Brief explanation — if completely_irrelevant, explain EXACTLY which identifiers differ"
+}`;
+}
+
+
+function buildErrorDetectionPrompt() {
+    return `You are an expert OET Writing Assessor performing THOROUGH error detection. Your ONLY task is to find and mark EVERY error in the student's letter.
+
+You will receive:
+1. The student's letter text
+2. Processed case notes analysis
+
+YOUR TASK:
+Reproduce the COMPLETE student letter verbatim and apply inline corrections directly inside the letter. Do NOT summarize or paraphrase. Every single line of the original letter must appear in your output.
+
+ INLINE CORRECTION MARKERS (MANDATORY)
+Use ONLY the following markers:
+~error~ → incorrect text
+*correction* → corrected version
+(assessor: explanation) → brief reason
+~~irrelevant sentence~~ → irrelevant to task/recipient
+[[missing: detail]] → critical missing information
+
+ Do NOT rewrite whole sentences unless the entire sentence is incorrect
+ Correct ONLY the erroneous part
+
+ SYSTEMATIC LINE-BY-LINE METHOD (FOLLOW THIS EXACTLY)
+
+For EACH sentence in the student letter, you must check ALL of the following IN ORDER:
+
+CHECK 1 — Grammar:
+□ Subject-verb agreement correct? ("The patient were" → wrong, "The patient was" → correct)
+□ Tense consistent and appropriate? (Past events = past tense, ongoing = present perfect)
+□ Articles present and correct? ("patient has" → "the patient has", "a hypertension" → wrong)
+□ Prepositions correct? ("discharged in 20 March" → "on", "admitted in hospital" → "to")
+□ Pronouns clear? (No ambiguous "he/she/it" — who does it refer to?)
+□ Sentence structure complete? (No run-on sentences, no fragments)
+
+CHECK 2 — Spelling:
+□ Every word spelled correctly? Read each word individually.
+□ Common medical misspellings? (recieve→receive, occured→occurred, seperate→separate, managment→management, refered→referred, paracetomol→paracetamol)
+
+CHECK 3 — Punctuation:
+□ Comma after introductory words? ("However he" → "However, he")
+□ Apostrophes for possession? ("patients medication" → "patient's medication")
+□ Colons before lists? ("The following medications paracetamol" → "...medications: paracetamol")
+□ Full stops at end of sentences?
+□ Commas in compound sentences?
+
+CHECK 4 — Register & Formality:
+□ No informal words? (get→receive, got→obtained, a lot of→significant, pretty good→satisfactory, big→substantial)
+□ No contractions? (didn't→did not, can't→cannot, he's→he is)
+□ No casual phrases? (got better→improved, sickness→nausea, medicine→medication)
+
+CHECK 5 — Content vs Case Notes:
+□ Is this information IN the case notes? If not → mark as fabricated (~text~ assessor: not in case notes)
+□ Is this information RELEVANT to this letter type and recipient? If not → mark as ~~irrelevant~~
+□ Are all CRITICAL case note details included? If missing → add [[missing: detail]]
+
+CHECK 6 — Clarity:
+□ Is the meaning clear? No vague phrases ("his condition" → specify: "his mobility" / "his pain levels")
+□ Is there repetition? Same info stated twice → mark the repeat
+□ Are there wordy phrases? ("at this point in time"→"currently", "in order to"→"to", "due to the fact that"→"because")
+
+ AFTER checking the entire letter, ADD these at the end:
+- [[missing: ...]] for each critical piece of case note information NOT mentioned anywhere in the letter
+- Focus on: diagnosis, key findings, medications, follow-up plans, discharge instructions, referral reasons
+
+ CRITICAL RULES:
+- You MUST check EVERY sentence against ALL 6 checks above
+- DO NOT skip errors because "the meaning is clear enough" — mark ALL errors
+- DO NOT skip spelling errors because "the word is recognizable" — mark ALL misspellings
+- DO NOT skip punctuation errors because "they are minor" — mark ALL punctuation issues
+- A human examiner will verify your work — every missed error reflects poorly
+- When in doubt, MARK IT — better to over-mark than under-mark
+
+ OUTPUT FORMAT (STRICT — JSON)
+Respond with a JSON object:
+{
+  "letterWithCorrections": "The FULL student letter reproduced verbatim with ALL inline corrections"
+}
+
+The "letterWithCorrections" field MUST contain every line of the original letter. Do NOT summarize.`;
+}
+
+function buildVerificationPrompt() {
+    return `You are a senior OET Writing examiner performing a QUALITY CHECK on a colleague's error marking.
+
+You will receive:
+1. The ORIGINAL student letter (unmarked)
+2. The CORRECTED letter with inline markers from the first examiner
+3. Case notes for reference
+
+YOUR TASK:
+Review the first examiner's corrections and find ANY errors they MISSED. Focus ONLY on errors not already marked.
+
+LOOK FOR:
+✔ Grammar errors not marked (articles, tenses, agreement, prepositions)
+✔ Spelling errors not marked
+✔ Punctuation errors not marked
+✔ Register/formality issues not flagged (informal language, contractions)
+✔ Irrelevant information not struck through
+✔ Fabricated information not flagged
+✔ Missing critical information not noted
+✔ Incorrect corrections (first examiner marked something wrongly)
+
+RULES:
+- Do NOT repeat errors already marked by the first examiner
+- ONLY report NEW findings
+- Be specific: quote the exact text and location
+- If the first examiner did thorough work, it is acceptable to find zero new errors
+
+ OUTPUT FORMAT (STRICT — JSON)
+{
+  "additionalCorrections": [
+    {
+      "originalText": "exact text from the letter",
+      "correction": "corrected version using markers",
+      "reason": "why this is an error",
+      "type": "grammar|spelling|punctuation|content|register|irrelevant|fabricated|missing"
+    }
+  ],
+  "hasNewErrors": true/false
+}
+
+If no additional errors found, return: { "additionalCorrections": [], "hasNewErrors": false }`;
+}
+
+function buildScoringPrompt() {
+    return `You are an expert OET Writing scoring examiner. Your ONLY task is to score the student's letter based on the corrected version with inline error markers.
+
+You will receive:
+1. The corrected letter with all inline error markers
+2. Case notes for reference
+
+YOUR TASK:
+Score each of the 6 criteria based on the errors found in the corrected letter. Base your scores STRICTLY on evidence you can see in the markers.
+
+ SCORING ANCHORS (APPLY STRICTLY)
+
+Minor = does not affect meaning
+Moderate = meaning slightly unclear / professional tone affected
+Major = meaning wrong, safety risk, purpose unclear, key info missing, fabricated info, or coherence breakdown
+
+7/7 – Excellent: Criterion fully met. No more than 1 very minor issue.
+6/7 – Good: Criterion mostly met. 2–3 minor issues OR 1 moderate issue.
+5/7 – Borderline: Criterion partially met. 1 major issue OR 4–5 minor issues.
+4/7 – Weak: Criterion inadequately met. Multiple major issues.
+3/7 or below – Poor: Criterion largely not met. Communication frequently breaks down.
+
+ MANDATORY DOWNWARD RULES — NO EXCEPTIONS
+
+1) PURPOSE:
+- Clarity failure in opening → Purpose ≤ 4
+- Template language in opening → Purpose ≤ 4
+- Purpose drift → Purpose ≤ 5
+- Recipient mismatch → Purpose ≤ 5
+
+2) CONTENT:
+- Any critical missing item [[missing:]] → Content ≤ 5
+- Multiple critical omissions → Content ≤ 4
+- Any fabricated information → Content ≤ 4
+- Multiple fabrications → Content ≤ 3
+- Irrelevant bulk → Content ≤ 5
+
+3) CONCISENESS & CLARITY:
+- Repeated clarity issues → Conciseness & Clarity ≤ 4
+- Wordiness/repetition throughout → Conciseness & Clarity ≤ 5
+- Severe coherence breakdown → Conciseness & Clarity ≤ 4
+
+4) ORGANIZATION & LAYOUT:
+- Poor paragraphing/sequencing → Organization & Layout ≤ 5
+- Major format faults → Organization & Layout ≤ 4
+
+5) GENRE & STYLE:
+- Frequent informal language/contractions → Genre & Style ≤ 5
+- Persistent register problems → Genre & Style ≤ 4
+
+6) LANGUAGE:
+- More than 6 grammar errors → Language ≤ 4
+- Frequent spelling/punctuation errors → Language ≤ 5
+- Vocabulary misuse affecting clinical meaning → Language ≤ 4
+
+ ANTI-INFLATION RULE:
+Do NOT default to 5 or 6. A score must be earned, not assumed.
+Count the actual errors marked in the corrected letter. If you see 8 grammar errors marked, Language CANNOT be above 4.
+
+ CONFIDENCE ASSESSMENT:
+After scoring, assess your confidence:
+- "high" = errors are clear-cut, scoring rules apply unambiguously
+- "low" = case notes are ambiguous, some errors are judgment calls, or you're uncertain about content relevance
+
+ OUTPUT FORMAT (STRICT — JSON)
+{
+  "scores": {
+    "purpose": 0-7,
+    "content": 0-7,
+    "conciseness_clarity": 0-7,
+    "organization_layout": 0-7,
+    "genre_style": 0-7,
+    "language": 0-7
+  },
+  "justifications": {
+    "purpose": "Brief: X errors of type Y found → score Z (downward rule applied: ...)",
+    "content": "Brief justification",
+    "conciseness_clarity": "Brief justification",
+    "organization_layout": "Brief justification",
+    "genre_style": "Brief justification",
+    "language": "Brief: X grammar errors, Y spelling, Z punctuation → score W"
+  },
+  "confidence": "high or low",
+  "confidenceReason": "Only if confidence is low — explain what is ambiguous"
+}
+
+CRITICAL: Base scores ONLY on evidence visible in the corrected letter markers. Do NOT invent errors or issues not already marked.`;
+}
+
+function buildFeedbackPrompt() {
+    return `You are an expert OET Writing feedback writer. Your ONLY task is to write professional assessment feedback paragraphs.
+
+You will receive:
+1. The corrected letter with inline error markers
+2. Scores and justifications for each criterion
+
+YOUR TASK:
+Write three feedback sections. Use the corrected letter and scores as evidence. Do NOT re-score or re-evaluate — use the scores provided.
+
+ SUMMARY
+Write ONE cohesive paragraph following this exact sequence:
+Purpose → Content → Conciseness & Clarity → Organization & Layout → Genre & Style → Language
+
+Rules:
+- Examiner tone (professional, neutral)
+- Descriptive, not technical ("the letter demonstrates..." not "score was...")
+- No listing — write flowing prose
+- No explicit corrections (don't quote ~error~ markers)
+- Reference the overall quality level without stating numeric scores
+
+ STRENGTHS
+Write ONE cohesive paragraph using the same sequence as Summary.
+- Mention what was done well
+- Be specific: cite actual positive aspects from the letter
+- Balanced, professional tone
+- No exaggeration (don't say "excellent" if score is 4)
+
+ AREAS FOR IMPROVEMENT
+Write ONE prescriptive paragraph using the same sequence.
+- Identify patterns of weakness (not just individual errors)
+- Use examples from the student's letter
+- Provide corrected forms where relevant
+- Be specific, not generic ("Replace informal terms like 'got better' with 'improved'" not "use better vocabulary")
+- Be actionable: tell the student what to do differently
+
+ OUTPUT FORMAT (STRICT — JSON)
+{
+  "summary": "ONE paragraph covering all 6 criteria in sequence",
+  "strengths": "ONE paragraph covering positive aspects",
+  "areasForImprovement": "ONE paragraph with specific, actionable guidance"
+}`;
+}
+
 function buildOetEvaluationSystemPrompt() {
 
     return `
@@ -593,70 +928,42 @@ Vocabulary misuse affecting clinical meaning (wrong medical term, unclear medica
 Do NOT default to 5 or 6.
 A score must be earned, not assumed.
 
- BACKEND SCORING LOGIC (DO NOT DISPLAY)
+ BACKEND SCORING LOGIC
+Total possible = 42 (6 criteria × 7 each).
+Do NOT compute the final 500-scale score or grade yourself — the system will compute it from your criterion scores.
 
-Total possible = 42
-Final Score = (Obtained / 42) × 500
-Round to nearest 10
+ OUTPUT FORMAT (STRICT — JSON)
+You MUST respond with a JSON object matching this exact structure. Do NOT include any text outside the JSON object.
 
-Grade bands:
-A: 450–500
-B: 350–449
-C+: 300–349
-C: 200–299
-D: 100–199
-E: 0–99
+{
+  "letterWithCorrections": "The FULL student letter reproduced verbatim with ALL inline corrections applied using the markers: ~error~ *correction* (assessor: reason) ~~irrelevant~~ [[missing: detail]]. Do NOT summarise or paraphrase. Reproduce every line.",
+  "summary": "ONE cohesive paragraph following this exact sequence: Purpose → Content → Conciseness & Clarity → Organization & Layout → Genre & Style → Language. Examiner tone, descriptive not technical, no listing, no explicit corrections.",
+  "strengths": "ONE cohesive paragraph using the same sequence as Summary. Mention what was done well. Balanced, professional tone. No exaggeration.",
+  "areasForImprovement": "ONE prescriptive paragraph using the same sequence. Identify patterns of weakness. Use examples from the student letter. Provide corrected forms where relevant. Be specific not generic.",
+  "scores": {
+    "purpose": 0-7,
+    "content": 0-7,
+    "conciseness_clarity": 0-7,
+    "organization_layout": 0-7,
+    "genre_style": 0-7,
+    "language": 0-7
+  }
+}
 
+CRITICAL RULES FOR JSON OUTPUT:
+- Each score MUST be an integer from 0 to 7
+- Do NOT include any text before or after the JSON object
+- Do NOT include the final total score or grade — the system computes these from your criterion scores
+- The "letterWithCorrections" field must contain the COMPLETE student letter with inline corrections — not a summary
 
- OUTPUT STRUCTURE (STRICT – NO EXTRA CONTENT)
-Your output must contain ONLY these 5 sections, in this exact order:
-Student Letter with Inline Corrections
-Summary
-Strengths
-Areas Of Improvement
-Grade and Score
-
-STUDENT LETTER WITH INLINE CORRECTIONS
-Reproduce the full letter verbatim
-Apply inline corrections
-Do NOT summarise or paraphrase
-
-SUMMARY
-Write ONE cohesive paragraph following this exact sequence:
-Purpose → Content → Conciseness & Clarity → Organization & Layout → Genre & Style → Language
-Examiner tone
-Descriptive, not technical
-No listing
-No explicit corrections
-
-STRENGTHS
-Write ONE cohesive paragraph using the same sequence as Summary.
-Mention what was done well
-Balanced, professional tone
-No exaggeration
-
-AREAS OF IMPROVEMENT
-Write ONE prescriptive paragraph using the same sequence.
-Identify patterns of weakness
-Use examples from the student’s letter
-Provide corrected forms where relevant
-Be specific (not generic)
-
-FINAL RESULT (MANDATORY FORMAT)
-TOTAL: X/500
-GRADE: X
-
- Do NOT justify
- Do NOT add breakdowns in the output
-
- CONSISTENCY RULE (FINAL, CORRECTED)
+ CONSISTENCY RULE
 
 Consistency means:
 Identical errors receive identical penalties
 Different quality produces different scores
 It does NOT mean giving similar scores to different-quality letters.
 
-**ASSESSMENT CHECKLIST (Must verify):**
+**ASSESSMENT CHECKLIST (Must verify before assigning scores):**
 ☑ Every grammar error marked inline with ~error~ *correction* (assessor: reason)
 ☑ Every irrelevant sentence struck through with ~~text~~
 ☑ All fabricated information identified
@@ -664,6 +971,7 @@ It does NOT mean giving similar scores to different-quality letters.
 ☑ Unclear/incoherent phrasing corrected with explanation
 ☑ Strict grammar check completed (articles, tenses, agreement, prepositions, punctuation, spelling)
 ☑ Specific, actionable feedback provided
+☑ Each criterion score strictly follows the MANDATORY DOWNWARD RULES above
 
 Please evaluate the following OET Writing sample using this comprehensive, strict assessment format:
         `;
@@ -688,4 +996,10 @@ module.exports = {
     buildCaseNotesProcessingPrompt,
     buildOetEvaluationSystemPrompt,
     buildOetEvaluationUserContent,
+    // Multi-step evaluation prompts
+    buildRelevanceCheckPrompt,
+    buildErrorDetectionPrompt,
+    buildVerificationPrompt,
+    buildScoringPrompt,
+    buildFeedbackPrompt,
 };
