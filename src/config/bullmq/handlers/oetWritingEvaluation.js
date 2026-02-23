@@ -2,6 +2,7 @@ const writingEvaluation = require('../../../services/oetWritingvaluation.service
 const winston = require('../../logger');
 const { addJob } = require('../../bullmq/queue.manager');
 async function oetWritingEvaluation(job) {
+    console.log('>>>>>>>>>>>>>>>>>>>', job.data);
     let { studentWritingAnswer, student, testData, writingText, course } = job.data;
     let result = await writingEvaluation.handleOetWritingEvaluation({
         studentWritingAnswer,
