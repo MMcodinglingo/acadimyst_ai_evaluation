@@ -1,7 +1,6 @@
-function buildOCrExtractionPrompt ({ pageIndex = 0 , totalPages = 1 }) { 
-
+function buildOCrExtractionPrompt({ pageIndex = 0, totalPages = 1 }) {
     return `You are an expert and strict OCR engine for OET letters. ${
-    totalPages > 1 ? `page ${pageIndex + 1} of ${totalPages}` : 'image'
+        totalPages > 1 ? `page ${pageIndex + 1} of ${totalPages}` : 'image'
     } exactly as it appears,  including:
     
     TASK:
@@ -84,7 +83,6 @@ function buildOCrExtractionPrompt ({ pageIndex = 0 , totalPages = 1 }) {
 }
 
 function buildOcrCorrectionSystemPrompt() {
-
     return `You are an OCR Post-Processor and Meaning-Preserving Corrector.
 
 GOAL
@@ -107,8 +105,7 @@ OUTPUT
 - Return ONLY the corrected text (plain text). No explanations, notes, or metadata.`;
 }
 
-function buildCaseNotesProcessingPrompt( { fileContent } ) {
-
+function buildCaseNotesProcessingPrompt({ fileContent }) {
     return `You are an expert OET Writing examiner analyzing medical case notes. Your task: categorize EVERY piece of information as RELEVANT, IRRELEVANT, or LESS RELEVANT for the student's OET letter.
 
 **YOUR RESPONSE STRUCTURE:**
@@ -238,27 +235,35 @@ ${fileContent}
 function buildRelevanceCheckPrompt() {
     return `You are an OET examiner performing a RELEVANCE PRE-CHECK before evaluation.
 
-PURPOSE: Catch cases where a student accidentally submits an answer for the WRONG test. This is a SAFETY NET, NOT a quality check.
+PURPOSE: Catch TWO types of invalid submissions:
+1. Student accidentally submits an answer for the WRONG test case
+2. Student submits something that is NOT a medical letter at all (gibberish, lorem ipsum, random text, copied case notes, non-English text, or unrelated content)
 
-YOUR DEFAULT VERDICT IS "relevant". You should ONLY override this to "completely_irrelevant" when you are 100% certain the letter is about a COMPLETELY DIFFERENT patient AND clinical scenario.
+STEP 1 — FIRST, determine if this is even a letter:
+- Does the submission have ANY letter structure? (salutation like "Dear Dr...", body paragraphs, closing like "Yours sincerely")
+- Is it written in English?
+- Does it discuss a patient or clinical scenario?
+- Is it original writing (not just the case notes copied back)?
 
-STEP 1 — Extract identifiers from the CASE NOTES:
+If the submission is NOT a letter at all → verdict is "not_a_letter". Skip Steps 2-3.
+
+STEP 2 — If it IS a letter, extract identifiers from the CASE NOTES:
 - Patient name (or description if unnamed)
 - Primary condition/diagnosis
 - Letter type (referral / discharge / transfer / update)
 - Intended recipient (GP / specialist / nurse / other)
 
-STEP 2 — Extract the SAME identifiers from the STUDENT'S LETTER:
+STEP 3 — Extract the SAME identifiers from the STUDENT'S LETTER:
 - Who does the letter discuss?
 - What condition/diagnosis is mentioned?
 - What type of letter is it?
 - Who is it addressed to?
 
-STEP 3 — Compare and determine relevance:
+STEP 4 — Compare and determine relevance:
 
 VERDICT RULES:
 
-"relevant" (DEFAULT — use this unless you are certain otherwise):
+"relevant" (DEFAULT for valid letters — use this unless you are certain otherwise):
 - The letter discusses the SAME or SIMILAR patient and clinical scenario
 - The patient name matches (even partially or with spelling errors)
 - The general medical condition/scenario overlaps
@@ -272,22 +277,27 @@ VERDICT RULES:
 - Significant mismatch in letter type or recipient, but patient/condition clearly matches
 - This is an edge case — when in doubt, use "relevant" instead
 
-"completely_irrelevant" (USE WITH EXTREME CAUTION — ONLY when 100% certain):
-- REQUIRES BOTH: different patient name AND different clinical condition/scenario
-- The letter is CLEARLY about a TOTALLY DIFFERENT case
-- Example: Case notes = "Mr. Smith, knee replacement surgery" but letter = "Mrs. Jones, diabetes management"
-- Example: Case notes = "child with asthma" but letter = "elderly patient with cardiac arrest"
+"not_a_letter" (for submissions that are NOT medical letters):
+- Lorem ipsum, placeholder text, or gibberish
+- Random text with no medical or letter content
+- Non-English text (not an OET letter)
+- The case notes copied/pasted verbatim without letter formatting
+- Extremely short submissions (just a few words, not a letter attempt)
+- Any content that no reasonable examiner would recognize as a letter attempt
 
-MANDATORY ANTI-FALSE-POSITIVE RULES:
+"completely_irrelevant" (USE WITH EXTREME CAUTION — ONLY when 100% certain):
+- The submission IS a valid letter but about a COMPLETELY DIFFERENT case
+- REQUIRES BOTH: different patient name AND different clinical condition/scenario
+- Example: Case notes = "Mr. Smith, knee replacement surgery" but letter = "Mrs. Jones, diabetes management"
+
+MANDATORY ANTI-FALSE-POSITIVE RULES (apply ONLY when submission is a valid letter):
 1. If the patient name matches OR is similar (even with spelling errors) → verdict MUST be "relevant"
 2. If the clinical condition overlaps even partially → verdict MUST be "relevant"
 3. If you can see ANY connection between the letter and case notes → verdict MUST be "relevant"
-4. If the case notes mention the condition and the letter also mentions it → "relevant"
-5. A bad letter about the right case is NEVER "completely_irrelevant"
-6. Fabricated details about the right patient = "relevant"
-7. Missing information = "relevant"
-8. If you have ANY doubt → "relevant"
-9. WHEN IN DOUBT, ALWAYS choose "relevant" — a false positive (marking a correct letter as irrelevant) is FAR WORSE than a false negative
+4. A bad letter about the right case is NEVER "completely_irrelevant"
+5. Fabricated details about the right patient = "relevant"
+6. Missing information = "relevant"
+7. If you have ANY doubt between "relevant" and "completely_irrelevant" → choose "relevant"
 
 OUTPUT FORMAT (STRICT — JSON)
 {
@@ -298,17 +308,16 @@ OUTPUT FORMAT (STRICT — JSON)
     "intendedRecipient": "who the letter should be addressed to"
   },
   "letterIdentifiers": {
-    "patientName": "name from student letter",
-    "primaryCondition": "condition discussed in letter",
-    "letterType": "type of letter written",
-    "addressedTo": "who the letter is addressed to"
+    "patientName": "name from student letter or NONE if not a letter",
+    "primaryCondition": "condition discussed in letter or NONE",
+    "letterType": "type of letter written or NONE",
+    "addressedTo": "who the letter is addressed to or NONE"
   },
-  "verdict": "relevant / partially_relevant / completely_irrelevant",
+  "verdict": "relevant / partially_relevant / completely_irrelevant / not_a_letter",
   "confidence": "high / low",
-  "reason": "Brief explanation — if completely_irrelevant, explain EXACTLY which identifiers differ"
+  "reason": "Brief explanation — if not_a_letter, explain why this is not a valid letter submission. If completely_irrelevant, explain EXACTLY which identifiers differ."
 }`;
 }
-
 
 function buildErrorDetectionPrompt() {
     return `You are an expert OET Writing Assessor performing THOROUGH error detection. Your ONLY task is to find and mark EVERY error in the student's letter.
@@ -443,61 +452,76 @@ You will receive:
 YOUR TASK:
 Score each of the 6 criteria based on the errors found in the corrected letter. Base your scores STRICTLY on evidence you can see in the markers.
 
- SCORING ANCHORS (APPLY STRICTLY)
+OFFICIAL OET BAND DESCRIPTORS (use these to calibrate your scoring):
+
+Grade A (score 450-500, criteria avg 6-7): Can communicate very fluently and effectively with patients and health professionals using appropriate register, tone and lexis. Shows complete understanding of any kind of written or spoken language.
+Grade B (score 350-440, criteria avg 5-6): Can communicate effectively with patients and health professionals using appropriate register, tone and lexis, with only occasional inaccuracies and hesitations. Shows good understanding in a range of clinical contexts.
+Grade C+ (score 300-340, criteria avg 4-5): Transitional band — meets minimum clinical communication standard with noticeable but manageable weaknesses.
+Grade C (score 200-290, criteria avg 3-4): Can maintain the interaction in a relevant healthcare environment despite occasional errors and lapses, and follow standard spoken language normally encountered in their field of specialisation.
+Grade D (score 100-190, criteria avg 2-3): Can maintain some interaction and understand straightforward factual information in their field of specialisation, but may ask for clarification. Frequent errors, inaccuracies and mis-or overuse of technical language can cause strain in communication.
+Grade E (score 0-90, criteria avg 0-1): Can manage simple interaction on familiar topics and understand the main point in short, simple messages. High density of errors and mis- or overuse of technical language can cause significant strain and breakdowns in communication.
+
+SCORING ANCHORS (APPLY STRICTLY):
 
 Minor = does not affect meaning
 Moderate = meaning slightly unclear / professional tone affected
 Major = meaning wrong, safety risk, purpose unclear, key info missing, fabricated info, or coherence breakdown
 
-7/7 – Excellent: Criterion fully met. No more than 1 very minor issue.
-6/7 – Good: Criterion mostly met. 2–3 minor issues OR 1 moderate issue.
-5/7 – Borderline: Criterion partially met. 1 major issue OR 4–5 minor issues.
-4/7 – Weak: Criterion inadequately met. Multiple major issues.
-3/7 or below – Poor: Criterion largely not met. Communication frequently breaks down.
+7/7 - Excellent (Band A): Criterion fully met. No more than 1 very minor issue.
+6/7 - Good (Band A/B): Criterion mostly met. 2-3 minor issues OR 1 moderate issue.
+5/7 - Borderline (Band B/C+): Criterion partially met. 1 major issue OR 4-5 minor issues.
+4/7 - Weak (Band C+/C): Criterion inadequately met. Multiple major issues.
+3/7 - Poor (Band C/D): Criterion largely not met. Communication frequently breaks down.
+2/7 - Very Poor (Band D): Criterion barely addressed. Persistent errors throughout.
+1/7 - Minimal (Band D/E): Almost no evidence of meeting the criterion.
+0/7 - Not met (Band E): Criterion completely unmet or submission invalid.
 
- MANDATORY DOWNWARD RULES — NO EXCEPTIONS
+MANDATORY DOWNWARD RULES — NO EXCEPTIONS:
 
 1) PURPOSE:
-- Clarity failure in opening → Purpose ≤ 4
-- Template language in opening → Purpose ≤ 4
-- Purpose drift → Purpose ≤ 5
-- Recipient mismatch → Purpose ≤ 5
+- Clarity failure in opening -> Purpose <= 4
+- Template language in opening -> Purpose <= 4
+- Purpose drift -> Purpose <= 5
+- Recipient mismatch -> Purpose <= 5
 
 2) CONTENT:
-- Any critical missing item [[missing:]] → Content ≤ 5
-- Multiple critical omissions → Content ≤ 4
-- Any fabricated information → Content ≤ 4
-- Multiple fabrications → Content ≤ 3
-- Irrelevant bulk → Content ≤ 5
+- Any critical missing item [[missing:]] -> Content <= 5
+- Multiple critical omissions -> Content <= 4
+- Any fabricated information -> Content <= 4
+- Multiple fabrications -> Content <= 3
+- Irrelevant bulk -> Content <= 5
 
 3) CONCISENESS & CLARITY:
-- Repeated clarity issues → Conciseness & Clarity ≤ 4
-- Wordiness/repetition throughout → Conciseness & Clarity ≤ 5
-- Severe coherence breakdown → Conciseness & Clarity ≤ 4
+- Repeated clarity issues -> Conciseness & Clarity <= 4
+- Wordiness/repetition throughout -> Conciseness & Clarity <= 5
+- Severe coherence breakdown -> Conciseness & Clarity <= 4
 
 4) ORGANIZATION & LAYOUT:
-- Poor paragraphing/sequencing → Organization & Layout ≤ 5
-- Major format faults → Organization & Layout ≤ 4
+- Poor paragraphing/sequencing -> Organization & Layout <= 5
+- Major format faults -> Organization & Layout <= 4
 
 5) GENRE & STYLE:
-- Frequent informal language/contractions → Genre & Style ≤ 5
-- Persistent register problems → Genre & Style ≤ 4
+- Frequent informal language/contractions -> Genre & Style <= 5
+- Persistent register problems -> Genre & Style <= 4
 
 6) LANGUAGE:
-- More than 6 grammar errors → Language ≤ 4
-- Frequent spelling/punctuation errors → Language ≤ 5
-- Vocabulary misuse affecting clinical meaning → Language ≤ 4
+- More than 6 grammar errors -> Language <= 4
+- Frequent spelling/punctuation errors -> Language <= 5
+- Vocabulary misuse affecting clinical meaning -> Language <= 4
 
- ANTI-INFLATION RULE:
+ANTI-INFLATION RULE:
 Do NOT default to 5 or 6. A score must be earned, not assumed.
 Count the actual errors marked in the corrected letter. If you see 8 grammar errors marked, Language CANNOT be above 4.
 
- CONFIDENCE ASSESSMENT:
+CROSS-CRITERION CONSISTENCY:
+Your scores across all 6 criteria should tell a coherent story. A letter with Language 3/7 is unlikely to have Genre & Style 6/7. A letter with Content 2/7 is unlikely to have Purpose 6/7. If your scores seem inconsistent, re-examine.
+
+CONFIDENCE ASSESSMENT:
 After scoring, assess your confidence:
 - "high" = errors are clear-cut, scoring rules apply unambiguously
 - "low" = case notes are ambiguous, some errors are judgment calls, or you're uncertain about content relevance
 
- OUTPUT FORMAT (STRICT — JSON)
+OUTPUT FORMAT (STRICT — JSON):
 {
   "scores": {
     "purpose": 0-7,
@@ -508,12 +532,12 @@ After scoring, assess your confidence:
     "language": 0-7
   },
   "justifications": {
-    "purpose": "Brief: X errors of type Y found → score Z (downward rule applied: ...)",
-    "content": "Brief justification",
-    "conciseness_clarity": "Brief justification",
+    "purpose": "Brief: X errors of type Y found -> score Z (downward rule applied: ...)",
+    "content": "Brief justification with error counts: X missing items, Y fabrications, Z irrelevant inclusions",
+    "conciseness_clarity": "Brief justification with specific examples",
     "organization_layout": "Brief justification",
-    "genre_style": "Brief justification",
-    "language": "Brief: X grammar errors, Y spelling, Z punctuation → score W"
+    "genre_style": "Brief justification with register error count",
+    "language": "Brief: X grammar errors, Y spelling, Z punctuation -> score W"
   },
   "confidence": "high or low",
   "confidenceReason": "Only if confidence is low — explain what is ambiguous"
@@ -523,51 +547,44 @@ CRITICAL: Base scores ONLY on evidence visible in the corrected letter markers. 
 }
 
 function buildFeedbackPrompt() {
-    return `You are an expert OET Writing feedback writer. Your ONLY task is to write professional assessment feedback paragraphs.
+    return `You are an expert OET Writing examiner writing concise, professional feedback for a student.
 
 You will receive:
-1. The corrected letter with inline error markers
-2. Scores and justifications for each criterion
+1. The ORIGINAL student letter (exactly as submitted — this is what the student actually wrote)
+2. The corrected letter with inline error markers (showing all errors found)
+3. Scores and justifications for each OET criterion
 
 YOUR TASK:
-Write three feedback sections. Use the corrected letter and scores as evidence. Do NOT re-score or re-evaluate — use the scores provided.
+Write a SINGLE paragraph of examiner feedback called "examinerFeedback".
 
- SUMMARY
-Write ONE cohesive paragraph following this exact sequence:
-Purpose → Content → Conciseness & Clarity → Organization & Layout → Genre & Style → Language
+IMPORTANT — CHECK THE SCORES FIRST:
+If ALL scores are 0 (meaning the submission was not a valid letter or was completely irrelevant), write feedback that:
+- States clearly what went wrong (not a letter, case notes pasted, irrelevant content, gibberish, etc.)
+- Tells the student what they must do instead (write an original letter in letter format addressing the correct case)
+- Keep it 3-4 lines. Do NOT try to find positives in invalid submissions.
 
-Rules:
-- Examiner tone (professional, neutral)
-- Descriptive, not technical ("the letter demonstrates..." not "score was...")
-- No listing — write flowing prose
-- No explicit corrections (don't quote ~error~ markers)
-- Reference the overall quality level without stating numeric scores
+FOR VALID LETTERS (scores above 0), follow this 3-part structure:
+1. NEGATIVE first — describe the key errors and weaknesses observed. Reference what the student ACTUALLY WROTE in their original letter (e.g., "You wrote 'the patient were admitted' which should be 'the patient was admitted'"). Use the original letter for quoting the student's actual words.
+2. POSITIVE second — acknowledge what the student did well
+3. SUGGESTIONS last — give specific, actionable advice on how to improve. Frame suggestions as what a real OET examiner would tell a student preparing for the exam.
 
- STRENGTHS
-Write ONE cohesive paragraph using the same sequence as Summary.
-- Mention what was done well
-- Be specific: cite actual positive aspects from the letter
-- Balanced, professional tone
-- No exaggeration (don't say "excellent" if score is 4)
+STRICT RULES:
+- Maximum 6-8 lines of text. No exceptions. Be concise.
+- Write in flowing prose only — NO bullet points, NO numbered lists, NO sub-headings
+- Professional examiner tone throughout — write as if you are an OET examiner giving feedback in a real exam setting
+- Do NOT mention numeric scores
+- Do NOT quote the correction markers (~error~, *correction*, etc.) — instead quote the student's original text directly
+- Cover all 6 criteria naturally within the single paragraph
+- Be specific — reference actual issues from the student's original letter, not generic statements
+- Address the student directly using "you" / "your letter"
 
- AREAS FOR IMPROVEMENT
-Write ONE prescriptive paragraph using the same sequence.
-- Identify patterns of weakness (not just individual errors)
-- Use examples from the student's letter
-- Provide corrected forms where relevant
-- Be specific, not generic ("Replace informal terms like 'got better' with 'improved'" not "use better vocabulary")
-- Be actionable: tell the student what to do differently
-
- OUTPUT FORMAT (STRICT — JSON)
+OUTPUT FORMAT (STRICT — JSON):
 {
-  "summary": "ONE paragraph covering all 6 criteria in sequence",
-  "strengths": "ONE paragraph covering positive aspects",
-  "areasForImprovement": "ONE paragraph with specific, actionable guidance"
+  "examinerFeedback": "Your single flowing paragraph here. 6-8 lines max."
 }`;
 }
 
 function buildOetEvaluationSystemPrompt() {
-
     return `
         You are an expert OET Writing Assessor evaluating referral, discharge, transfer, or update letters according to official OET Writing criteria.
 
@@ -607,6 +624,15 @@ Use ONLY the following markers:
 ✔ Clinical accuracy
 
  SCORING FRAMEWORK (CRITICAL – ANTI-INFLATION)
+
+ OFFICIAL OET BAND DESCRIPTORS (calibrate your scoring against these):
+Grade A (score 450-500, criteria avg 6-7): Can communicate very fluently and effectively with patients and health professionals using appropriate register, tone and lexis. Shows complete understanding of any kind of written or spoken language.
+Grade B (score 350-440, criteria avg 5-6): Can communicate effectively with patients and health professionals using appropriate register, tone and lexis, with only occasional inaccuracies and hesitations. Shows good understanding in a range of clinical contexts.
+Grade C+ (score 300-340, criteria avg 4-5): Transitional band — meets minimum clinical communication standard with noticeable but manageable weaknesses.
+Grade C (score 200-290, criteria avg 3-4): Can maintain the interaction in a relevant healthcare environment despite occasional errors and lapses, and follow standard spoken language normally encountered in their field of specialisation.
+Grade D (score 100-190, criteria avg 2-3): Can maintain some interaction and understand straightforward factual information in their field of specialisation, but may ask for clarification. Frequent errors, inaccuracies and mis-or overuse of technical language can cause strain in communication.
+Grade E (score 0-90, criteria avg 0-1): Can manage simple interaction on familiar topics and understand the main point in short, simple messages. High density of errors and mis- or overuse of technical language can cause significant strain and breakdowns in communication.
+
  GLOBAL SCORING ANCHORS (APPLY STRICTLY)
 
 Each criterion is scored out of 7 using the same anchors every time:
@@ -615,27 +641,37 @@ Minor = does not affect meaning
 Moderate = meaning slightly unclear / professional tone affected
 Major = meaning wrong, safety risk, purpose unclear, key info missing, fabricated info, or coherence breakdown
 
-7/7 – Excellent
+7/7 – Excellent (Band A)
 Criterion fully met
 No more than 1 very minor issue
 No missing or fabricated information
 
-6/7 – Good
+6/7 – Good (Band A/B)
 Criterion mostly met
 2–3 minor issues OR 1 moderate issue
 
-5/7 – Borderline
+5/7 – Borderline (Band B/C+)
 Criterion partially met
 1 major issue OR 4–5 minor issues
 
-4/7 – Weak
+4/7 – Weak (Band C+/C)
 Criterion inadequately met
 Multiple major issues
 Reader effort clearly required
 
-3/7 or below – Poor
+3/7 – Poor (Band C/D)
 Criterion largely not met
 Communication frequently breaks down
+
+2/7 – Very Poor (Band D)
+Criterion barely addressed
+Persistent errors throughout
+
+1/7 – Minimal (Band D/E)
+Almost no evidence of meeting the criterion
+
+0/7 – Not met (Band E)
+Criterion completely unmet or submission invalid
 
  ASSESSMENT CRITERIA (DO NOT CHANGE STRUCTURE)
 
@@ -977,8 +1013,7 @@ Please evaluate the following OET Writing sample using this comprehensive, stric
         `;
 }
 
-function buildOetEvaluationUserContent({ correctedText, processedCaseNotes }){
-
+function buildOetEvaluationUserContent({ correctedText, processedCaseNotes }) {
     if (!processedCaseNotes) return correctedText;
 
     return `**CASE NOTES ANALYSIS:**
@@ -988,6 +1023,36 @@ ${processedCaseNotes}
 ${correctedText}
 
 Please evaluate this student's letter against the case notes provided above. Check if the student has included relevant information from the case notes and excluded irrelevant details.`;
+}
+
+function buildHolisticImpressionPrompt() {
+    return `You are a senior OET Writing examiner. Your task is to form a HOLISTIC IMPRESSION of the student's letter before detailed analytical scoring begins.
+
+Read the student's letter AS A WHOLE. Do NOT count individual errors. Instead, ask yourself:
+
+1. COMMUNICATIVE EFFECTIVENESS: If a real healthcare professional received this letter, could they understand it and act on it safely and appropriately?
+2. PURPOSE ACHIEVEMENT: Does the letter achieve what it set out to do (referral/discharge/transfer/update)?
+3. PROFESSIONAL ADEQUACY: Is the language and tone adequate for professional medical correspondence?
+4. CONTENT COVERAGE: Does the letter address the key clinical information from the case notes?
+
+Based on your holistic reading, assign an overall band using the OFFICIAL OET BAND DESCRIPTORS:
+
+Band A: Can communicate very fluently and effectively with patients and health professionals using appropriate register, tone and lexis. Shows complete understanding.
+Band B: Can communicate effectively with only occasional inaccuracies and hesitations. Shows good understanding in a range of clinical contexts.
+Band C+: Meets minimum clinical communication standard with noticeable but manageable weaknesses.
+Band C: Can maintain the interaction despite occasional errors and lapses. Follow standard language normally encountered in their field.
+Band D: Can maintain some interaction but frequent errors, inaccuracies and mis-or overuse of technical language can cause strain in communication.
+Band E: High density of errors can cause significant strain and breakdowns in communication.
+
+IMPORTANT: This is a gut-level professional judgment — like a senior examiner glancing at a letter and immediately knowing "this is a Band C letter." Trust your impression.
+
+OUTPUT FORMAT (STRICT — JSON):
+{
+  "holisticBand": "A / B / C+ / C / D / E",
+  "impression": "2-3 sentence holistic impression of the letter's overall communicative effectiveness",
+  "keyStrength": "The single most notable strength of this letter",
+  "keyWeakness": "The single most notable weakness of this letter"
+}`;
 }
 
 module.exports = {
@@ -1000,6 +1065,7 @@ module.exports = {
     buildRelevanceCheckPrompt,
     buildErrorDetectionPrompt,
     buildVerificationPrompt,
+    buildHolisticImpressionPrompt,
     buildScoringPrompt,
     buildFeedbackPrompt,
 };

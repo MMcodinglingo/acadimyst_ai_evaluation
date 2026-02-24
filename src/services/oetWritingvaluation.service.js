@@ -63,12 +63,51 @@ const handleOetWritingEvaluation = async ({ studentWritingAnswer, student, testD
     }
 
     if (writingSections) {
-        const patientSection = writingSections.find(
-            (s) => typeof s.title === 'string' && s.title.trim().toLowerCase() === 'patient'
+        // Log section titles to help debug data shape
+        const sectionTitles = writingSections.map((s) => s.title || s.heading || 'NO_TITLE').join(', ');
+        winston.info(`OET evaluation — writingSections found (${writingSections.length} items): [${sectionTitles}]`);
+
+        // Strategy 1: Look for a section titled exactly "Name" — most reliable
+        const nameSection = writingSections.find(
+            (s) => typeof s.title === 'string' && s.title.trim().toLowerCase() === 'name'
         );
-        if (patientSection?.subSections?.length > 0) {
-            patientName = patientSection.subSections[0]?.content?.trim() || null;
+        if (nameSection?.subSections?.length > 0) {
+            patientName = nameSection.subSections[0]?.content?.trim() || null;
         }
+
+        // Strategy 2: Look for a section with title "Patient" that has content
+        if (!patientName) {
+            const patientSection = writingSections.find(
+                (s) => typeof s.title === 'string'
+                    && s.title.trim().toLowerCase() === 'patient'
+                    && s.subSections?.length > 0
+            );
+            if (patientSection) {
+                patientName = patientSection.subSections[0]?.content?.trim() || null;
+            }
+        }
+
+        // Strategy 3: Look for sections containing 'patient' with non-empty subSections
+        if (!patientName) {
+            const patientContentSection = writingSections.find(
+                (s) => typeof s.title === 'string'
+                    && s.title.trim().toLowerCase().includes('patient')
+                    && s.subSections?.length > 0
+                    && s.subSections[0]?.content?.trim()
+            );
+            if (patientContentSection) {
+                patientName = patientContentSection.subSections[0]?.content?.trim() || null;
+            }
+        }
+
+        if (patientName) {
+            winston.info(`OET evaluation — patient name extracted: "${patientName}"`);
+        } else {
+            const firstSection = writingSections[0];
+            winston.warn(`OET evaluation — no patient name found. First section keys: [${Object.keys(firstSection || {}).join(', ')}]`);
+        }
+    } else {
+        winston.warn('OET evaluation — no writingSections array found in any candidate path');
     }
 
     winston.info(`OET evaluation — patient name extracted: "${patientName || 'NOT FOUND — deterministic check will be skipped'}"`);
@@ -122,6 +161,10 @@ const handleOetWritingEvaluation = async ({ studentWritingAnswer, student, testD
                     // Confidence flag for teacher routing
                     confidence: writingFeedback.confidence || 'high',
                     confidenceReason: writingFeedback.confidenceReason || null,
+                    // AI criterion scores (0-7 per criterion) for teacher comparison
+                    aiCriterionScores: writingFeedback.aiCriterionScores || null,
+                    // Holistic impression from senior examiner anchor step
+                    holisticImpression: writingFeedback.holisticImpression || null,
                     scoreHistory: {
                         score: writingMarks,
                         grade: writingGrade,

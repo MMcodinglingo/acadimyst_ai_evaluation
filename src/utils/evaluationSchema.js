@@ -59,9 +59,15 @@ const ScoringSchema = z.object({
 
 // Step 3: Feedback
 const FeedbackSchema = z.object({
-    summary: z.string().min(20),
-    strengths: z.string().min(20),
-    areasForImprovement: z.string().min(20),
+    examinerFeedback: z.string().min(30),
+});
+
+// Step 1c: Holistic Impression
+const HolisticImpressionSchema = z.object({
+    holisticBand: z.enum(['A', 'B', 'C+', 'C', 'D', 'E']),
+    impression: z.string().min(10),
+    keyStrength: z.string().min(5),
+    keyWeakness: z.string().min(5),
 });
 
 // ─── Deterministic score computation ───
@@ -86,9 +92,7 @@ function computeFinalScore(scores) {
 function buildLegacyContent(structured, computed) {
     return [
         `**PART 1 — STUDENT LETTER WITH INLINE CORRECTIONS**\n\n${structured.letterWithCorrections}`,
-        `**SUMMARY**\n\n${structured.summary}`,
-        `**STRENGTHS**\n\n${structured.strengths}`,
-        `**AREAS FOR IMPROVEMENT**\n\n${structured.areasForImprovement}`,
+        `**EXAMINER FEEDBACK**\n\n${structured.examinerFeedback}`,
         `**FINAL RESULT**\nTOTAL: ${computed.scaledScore}/500\nGRADE: ${computed.grade}`,
     ].join('\n\n');
 }
@@ -202,11 +206,25 @@ const scoringJsonSchema = {
 const feedbackJsonSchema = {
     type: 'object',
     properties: {
-        summary: { type: 'string', description: 'ONE cohesive paragraph covering all 6 criteria in sequence.' },
-        strengths: { type: 'string', description: 'ONE cohesive paragraph covering what was done well.' },
-        areasForImprovement: { type: 'string', description: 'ONE prescriptive paragraph with examples and corrected forms.' },
+        examinerFeedback: {
+            type: 'string',
+            description: 'A single concise paragraph (6-8 lines MAX) covering: first the key weaknesses/errors, then what the student did well, then specific suggestions for improvement. Professional examiner tone. No bullet points, no sub-headings, plain flowing prose only.',
+        },
     },
-    required: ['summary', 'strengths', 'areasForImprovement'],
+    required: ['examinerFeedback'],
+    additionalProperties: false,
+};
+
+// Step 1c: Holistic Impression
+const holisticImpressionJsonSchema = {
+    type: 'object',
+    properties: {
+        holisticBand: { type: 'string', description: 'Overall band: A, B, C+, C, D, or E' },
+        impression: { type: 'string', description: '2-3 sentence holistic impression of the letter' },
+        keyStrength: { type: 'string', description: 'The single most notable strength' },
+        keyWeakness: { type: 'string', description: 'The single most notable weakness' },
+    },
+    required: ['holisticBand', 'impression', 'keyStrength', 'keyWeakness'],
     additionalProperties: false,
 };
 
@@ -224,7 +242,7 @@ const RelevanceCheckSchema = z.object({
         letterType: z.string(),
         addressedTo: z.string(),
     }),
-    verdict: z.enum(['relevant', 'partially_relevant', 'completely_irrelevant']),
+    verdict: z.enum(['relevant', 'partially_relevant', 'completely_irrelevant', 'not_a_letter']),
     confidence: z.enum(['high', 'low']),
     reason: z.string(),
 });
@@ -254,7 +272,7 @@ const relevanceCheckJsonSchema = {
             required: ['patientName', 'primaryCondition', 'letterType', 'addressedTo'],
             additionalProperties: false,
         },
-        verdict: { type: 'string', description: 'relevant, partially_relevant, or completely_irrelevant' },
+        verdict: { type: 'string', description: 'relevant, partially_relevant, completely_irrelevant, or not_a_letter' },
         confidence: { type: 'string', description: 'high or low — use low if any doubt about the verdict' },
         reason: { type: 'string', description: 'Brief explanation for the verdict' },
     },
@@ -273,10 +291,12 @@ module.exports = {
     VerificationSchema,
     ScoringSchema,
     FeedbackSchema,
+    HolisticImpressionSchema,
     errorDetectionJsonSchema,
     verificationJsonSchema,
     scoringJsonSchema,
     feedbackJsonSchema,
+    holisticImpressionJsonSchema,
     // Shared
     computeFinalScore,
     buildLegacyContent,
