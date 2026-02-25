@@ -54,7 +54,7 @@
             .report .header {
                 background: #ffffff;
                 color: var(--text);
-                padding: 22px 22px 18px;
+                padding: 10px 18px 10px;
                 position: relative;
                 border-bottom: 1px solid var(--border);
             }
@@ -84,13 +84,74 @@
                 display: block;
                 background: #fff;
                 border: 1px solid rgba(17, 24, 39, 0.15);
-                transform: scale(1.2);
+                transform: scale(1.0);
                 transform-origin: center;
             }
+
+/* ===== Compact center bar (NO disturbed text) ===== */
+.report .student-info.student-info--inline {
+  margin: 0;                        /* no extra top space */
+  padding: 8px 14px;                /* compact height */
+  width: min(620px, 100%);
+  display: flex;
+  align-items: stretch;              
+  justify-content: space-between;
+  gap: 16px;
+  background: #9d2235;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+}
+
+/* each side block */
+.report .student-info.student-info--inline .info-block {
+  flex: 1;
+  min-width: 0;                     /* IMPORTANT for ellipsis */
+  display: flex;                 /*  control vertical placement */
+  flex-direction: column;
+  align-items: flex-start;       /*  start from left edge */
+  justify-content: flex-start;   /*  start from top */
+  text-align: left;
+}
+
+/* right side alignment */
+.report .student-info.student-info--inline .info-block--right {
+display: flex;
+  flex-direction: column;
+  align-items: flex-end;     /* this makes it attach to the right edge */
+  justify-content: flex-start;
+  text-align: right;
+}
+
+/* label: fixed size + no wrapping */
+.report .student-info.student-info--inline .info-label {
+  font-size: 11px;                  /* stable across screens */
+  line-height: 1.1;
+  margin: 0 0 2px;
+  color: rgba(255, 255, 255, 0.78);
+  text-transform: uppercase;
+  white-space: nowrap;              /* IMPORTANT: stops broken text */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* value: bigger + no wrapping + ellipsis */
+.report .student-info.student-info--inline .info-value {
+  font-size: 18px;                  /* clear title/value */
+  font-weight: 900;
+  line-height: 1.1;
+  margin:0;
+  color: #fff;
+  white-space: nowrap;              /* IMPORTANT: stops disturbed wrap */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
             .report .header-center {
                 text-align: center;
                 flex: 1;
+                display: flex;
+                justify-content: center;
             }
 
             .report .header-center h1 {
@@ -142,38 +203,56 @@
             .report .final-result {
                 background: #9d2235;
                 color: white;
-                padding: 18px 16px;
-                border-radius: 12px;
+                padding: 10px 12px;
+                border-radius: 10px;
                 text-align: center;
-                margin: 18px;
+                margin: 12px 18px;
             }
 
             .report .final-result.pass {
                 background: linear-gradient(135deg, #27ae60, #229954);
             }
 
+            /* Tighten title and total */
+.report .final-result h3{
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.report .final-result p{
+  margin: 0;             /* remove extra vertical space */
+}
+
             .report .grade {
-                font-size: 2.6em;
+                font-size: 1.6em;
                 font-weight: 900;
-                margin: 8px 0 6px;
+                margin: 4px 0 4px;
+                line-height:1;
             }
 
             .report .grade-legend {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                gap: 12px;
-                margin: 0 18px 18px;
-                padding: 14px;
+                display: flex;
+                flex-wrap:nowrap;
+                overflow:hidden;
+                gap: 6px;
+                margin: 0 18px 14px;
+                padding: 10px 10px;
                 background: #f8f9fa;
                 border-radius: 12px;
                 border: 1px solid var(--border);
             }
 
             .report .grade-item {
-                text-align: center;
-                padding: 10px;
-                font-weight: 800;
-                border-radius: 10px;
+                flex: 1 1 0;
+  min-width: 0;               /* allow shrinking */
+  padding: 8px 6px;           /* reduce height */
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 12px;            /* smaller text */
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap; 
                 color: #ffffff;
                 background: #9d2235;
             }
@@ -494,25 +573,24 @@
                         </a>
 
                         <div class="header-center">
-                            <h1 id="reportTitle">Writing Assessment Report</h1>
-                            <p class="generated-date">Date: <span id="generatedOnHeader"><%= generatedDate %></span></p>
-                        </div>
+  <div class="student-info student-info--inline">
+    <div class="info-block">
+      <div class="info-label">Student Name</div>
+      <div class="info-value" id="studentName"><%= studentName || 'Student' %></div>
+    </div>
+
+    <div class="info-block info-block--right">
+      <div class="info-label">Report</div>
+      <div class="info-value" id="reportTitleText">Writing Report</div>
+    </div>
+  </div>
+</div>
 
                         <a href="https://acadimyst.com/" target="_blank" rel="noopener noreferrer">
                             <img src="https://d2mnxjaa9h61wj.cloudfront.net/6.png" alt="OET Logo" class="logo" id="logoRight" />
                         </a>
                     </div>
 
-                    <div class="student-info">
-                        <div>
-                            <div class="info-label">Student Name</div>
-                            <div class="info-value" id="studentName"><%= studentName || 'Student' %></div>
-                        </div>
-                        <div>
-                            <div class="info-label">Module</div>
-                            <div class="info-value" id="moduleName"><%= moduleName || 'Unknown Module' %></div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Legend row -->
