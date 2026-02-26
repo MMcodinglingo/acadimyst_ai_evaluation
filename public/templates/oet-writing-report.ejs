@@ -469,6 +469,28 @@ display: flex;
 
             /* ================= PDF PRINT CONTROL (Avoid breaking sections) ================= */
 @media print {
+
+.result-nobreak {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-before: auto;
+    break-after: auto;
+  }
+
+  /* keep these too (fine to keep both) */
+  .final-result,
+  .grade-legend {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* extra safety: stop inner elements from splitting */
+.final-result,
+.final-result * {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
   /* ===== PAGE SETUP ===== */
   @page {
     margin: 14mm 12mm 30mm 12mm; /* bottom margin bigger to reserve footer space */
@@ -615,22 +637,24 @@ display: flex;
 
                 <!-- RESULT -->
                 <div class="result-wrap">
-                    <% const resultClass = (meta.result || "").toLowerCase() === "pass" ? "pass" : ""; %>
-                    <div class="final-result <%= resultClass %>" id="finalResultBox">
-                        <h3>ASSESSMENT RESULT</h3>
-                        <div class="grade" id="finalGrade"><%= meta.grade || 'N/A' %></div>
-                        <p><strong id="finalTotal">TOTAL SCORE: <%= meta.totalScore != null ? meta.totalScore : '—' %>/<%= meta.totalOutOf != null ? meta.totalOutOf : '500' %></strong></p>
-                    </div>
+  <div class="result-nobreak">
+    <% const resultClass = (meta.result || "").toLowerCase() === "pass" ? "pass" : ""; %>
+    <div class="final-result <%= resultClass %>" id="finalResultBox">
+      <h3>ASSESSMENT RESULT</h3>
+      <div class="grade" id="finalGrade"><%= meta.grade || 'N/A' %></div>
+      <p><strong id="finalTotal">TOTAL SCORE: <%= meta.totalScore != null ? meta.totalScore : '—' %>/<%= meta.totalOutOf != null ? meta.totalOutOf : '500' %></strong></p>
+    </div>
 
-                    <div class="grade-legend">
-                        <div class="grade-item grade-a">A: 450–500</div>
-                        <div class="grade-item grade-b">B: 350–449</div>
-                        <div class="grade-item grade-c-plus">C+: 300–349</div>
-                        <div class="grade-item grade-c">C: 200–299</div>
-                        <div class="grade-item grade-d">D: 100–199</div>
-                        <div class="grade-item grade-e">E: 0–99</div>
-                    </div>
-                </div>
+    <div class="grade-legend">
+      <div class="grade-item grade-a">A: 450–500</div>
+      <div class="grade-item grade-b">B: 350–449</div>
+      <div class="grade-item grade-c-plus">C+: 300–349</div>
+      <div class="grade-item grade-c">C: 200–299</div>
+      <div class="grade-item grade-d">D: 100–199</div>
+      <div class="grade-item grade-e">E: 0–99</div>
+    </div>
+  </div>
+</div>
 
                 <div class="divider"></div>
 
