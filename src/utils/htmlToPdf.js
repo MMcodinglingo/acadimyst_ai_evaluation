@@ -161,7 +161,7 @@ async function generateIeltsWritingPdf(student, aiPayload, studentWritingAnswer,
         winston.info('Setting page content...');
         await page.setContent(html, {
             waitUntil: ['domcontentloaded', 'networkidle0'],
-            timeout: 60000,
+            timeout: 180000,
         });
 
         // Emulate screen media for better rendering
@@ -289,6 +289,20 @@ async function generateOETWritingPdf(
             bookingUrl,
         };
 
+                //  Remove duplicated result/grade cards from assessment section
+templateData.assessmentCards = (templateData.assessmentCards || []).filter((c) => {
+  const t = String(c?.title || '').toLowerCase();
+  const body = String(c?.htmlBody || '').toLowerCase();
+  return !(
+    t.includes('grade') ||
+    t.includes('score') ||
+    t.includes('result') ||
+    body.includes('total score') ||
+    body.includes('total:') ||
+    body.includes('grade:')
+  );
+});
+
         // 7. Render EJS template
         winston.info('Rendering EJS template...');
         const templatePath = path.resolve('public/templates/oet-writing-report.ejs');
@@ -327,7 +341,7 @@ async function generateOETWritingPdf(
         winston.info('Setting page content...');
         await page.setContent(html, {
             waitUntil: ['domcontentloaded', 'networkidle0'],
-            timeout: 60000,
+            timeout: 180000,
         });
 
         // Emulate screen media for better rendering
