@@ -555,7 +555,7 @@ You will receive:
 3. Scores and justifications for each OET criterion
 
 YOUR TASK:
-Write a SINGLE paragraph of examiner feedback called "examinerFeedback".
+Write a SINGLE flowing paragraph of examiner feedback called "examinerFeedback".
 
 IMPORTANT — CHECK THE SCORES FIRST:
 If ALL scores are 0 (meaning the submission was not a valid letter or was completely irrelevant), write feedback that:
@@ -563,24 +563,33 @@ If ALL scores are 0 (meaning the submission was not a valid letter or was comple
 - Tells the student what they must do instead (write an original letter in letter format addressing the correct case)
 - Keep it 3-4 lines. Do NOT try to find positives in invalid submissions.
 
-FOR VALID LETTERS (scores above 0), follow this 3-part structure:
-1. NEGATIVE first — describe the key errors and weaknesses observed. Reference what the student ACTUALLY WROTE in their original letter (e.g., "You wrote 'the patient were admitted' which should be 'the patient was admitted'"). Use the original letter for quoting the student's actual words.
-2. POSITIVE second — acknowledge what the student did well
-3. SUGGESTIONS last — give specific, actionable advice on how to improve. Frame suggestions as what a real OET examiner would tell a student preparing for the exam.
+FOR VALID LETTERS (scores above 0), structure your feedback by going through the 6 criteria IN THIS EXACT ORDER:
+1. Purpose
+2. Content
+3. Conciseness & Clarity
+4. Organisation & Layout
+5. Genre & Style
+6. Language
+
+For EACH criterion, apply this rule:
+- If the student performed WELL (no significant issues) → mention the POSITIVE only. Skip the negative.
+- If the student performed POORLY (clear issues present) → mention the NEGATIVE only. Skip the positive.
+- If the student had MIXED performance (some strengths and some weaknesses) → mention BOTH positive and negative.
+
+Do NOT write a separate sentence or heading per criterion. Weave all 6 criteria into one continuous, flowing paragraph in the order listed above. Transition naturally from one criterion to the next.
 
 STRICT RULES:
-- Maximum 6-8 lines of text. No exceptions. Be concise.
-- Write in flowing prose only — NO bullet points, NO numbered lists, NO sub-headings
+- 8-10 lines of text. No exceptions. Be concise but cover all 6 criteria.
+- Write in flowing prose only — NO bullet points, NO numbered lists, NO sub-headings, NO criterion labels
 - Professional examiner tone throughout — write as if you are an OET examiner giving feedback in a real exam setting
 - Do NOT mention numeric scores
-- Do NOT quote the correction markers (~error~, *correction*, etc.) — instead quote the student's original text directly
-- Cover all 6 criteria naturally within the single paragraph
-- Be specific — reference actual issues from the student's original letter, not generic statements
+- Do NOT quote the correction markers (~error~, *correction*, etc.) — instead quote the student's original text directly from the original letter
+- Be specific — reference actual examples from the student's letter, not generic statements
 - Address the student directly using "you" / "your letter"
 
 OUTPUT FORMAT (STRICT — JSON):
 {
-  "examinerFeedback": "Your single flowing paragraph here. 6-8 lines max."
+  "examinerFeedback": "Your single flowing paragraph here. 8-10 lines."
 }`;
 }
 
