@@ -70,6 +70,110 @@ const HolisticImpressionSchema = z.object({
     keyWeakness: z.string().min(5),
 });
 
+// ─── Case Notes Extraction Schema (structured output from case notes processing) ───
+
+const CaseNotesExtractionSchema = z.object({
+    patientName: z.string(),
+    age: z.string(),
+    diagnosis: z.string(),
+    primaryCondition: z.string(),
+    letterType: z.enum(['referral', 'discharge', 'transfer', 'update']),
+    recipient: z.string(),
+    medications: z.array(z.object({
+        name: z.string(),
+        dosage: z.string(),
+        frequency: z.string(),
+    })),
+    keyFindings: z.array(z.object({
+        finding: z.string(),
+        relevance: z.enum(['relevant', 'less_relevant', 'irrelevant']),
+        reasoning: z.string(),
+    })),
+    followUp: z.array(z.string()),
+    relevantItems: z.array(z.string()),
+    irrelevantItems: z.array(z.string()),
+    suggestedStructure: z.object({
+        paragraph1: z.string(),
+        paragraph2: z.string(),
+        paragraph3: z.string(),
+        paragraph4: z.string(),
+        closing: z.string(),
+    }),
+    keyWarnings: z.array(z.string()),
+});
+
+const caseNotesExtractionJsonSchema = {
+    type: 'object',
+    properties: {
+        patientName: { type: 'string', description: 'Full patient name from case notes' },
+        age: { type: 'string', description: 'Patient age' },
+        diagnosis: { type: 'string', description: 'Primary diagnosis or reason for presentation' },
+        primaryCondition: { type: 'string', description: 'Main clinical condition' },
+        letterType: { type: 'string', description: 'referral, discharge, transfer, or update' },
+        recipient: { type: 'string', description: 'Intended recipient of the letter (e.g., GP, specialist)' },
+        medications: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    name: { type: 'string', description: 'Medication name' },
+                    dosage: { type: 'string', description: 'Dosage amount' },
+                    frequency: { type: 'string', description: 'How often taken' },
+                },
+                required: ['name', 'dosage', 'frequency'],
+                additionalProperties: false,
+            },
+        },
+        keyFindings: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    finding: { type: 'string', description: 'Clinical finding or piece of information' },
+                    relevance: { type: 'string', description: 'relevant, less_relevant, or irrelevant' },
+                    reasoning: { type: 'string', description: 'Why this finding has this relevance level' },
+                },
+                required: ['finding', 'relevance', 'reasoning'],
+                additionalProperties: false,
+            },
+        },
+        followUp: {
+            type: 'array',
+            items: { type: 'string', description: 'Follow-up action or appointment' },
+        },
+        relevantItems: {
+            type: 'array',
+            items: { type: 'string', description: 'Item that must be included in the letter' },
+        },
+        irrelevantItems: {
+            type: 'array',
+            items: { type: 'string', description: 'Item that should be excluded from the letter' },
+        },
+        suggestedStructure: {
+            type: 'object',
+            properties: {
+                paragraph1: { type: 'string', description: 'Suggested content for paragraph 1' },
+                paragraph2: { type: 'string', description: 'Suggested content for paragraph 2' },
+                paragraph3: { type: 'string', description: 'Suggested content for paragraph 3' },
+                paragraph4: { type: 'string', description: 'Suggested content for paragraph 4' },
+                closing: { type: 'string', description: 'Suggested closing content' },
+            },
+            required: ['paragraph1', 'paragraph2', 'paragraph3', 'paragraph4', 'closing'],
+            additionalProperties: false,
+        },
+        keyWarnings: {
+            type: 'array',
+            items: { type: 'string', description: 'Common pitfall or warning for this case' },
+        },
+    },
+    required: [
+        'patientName', 'age', 'diagnosis', 'primaryCondition', 'letterType',
+        'recipient', 'medications', 'keyFindings', 'followUp',
+        'relevantItems', 'irrelevantItems', 'suggestedStructure', 'keyWarnings',
+    ],
+    additionalProperties: false,
+};
+
 // ─── Deterministic score computation ───
 
 function computeFinalScore(scores) {
@@ -292,11 +396,13 @@ module.exports = {
     ScoringSchema,
     FeedbackSchema,
     HolisticImpressionSchema,
+    CaseNotesExtractionSchema,
     errorDetectionJsonSchema,
     verificationJsonSchema,
     scoringJsonSchema,
     feedbackJsonSchema,
     holisticImpressionJsonSchema,
+    caseNotesExtractionJsonSchema,
     // Shared
     computeFinalScore,
     buildLegacyContent,
