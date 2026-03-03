@@ -100,7 +100,7 @@ const createQueue = (queueKey, customOptions = {}) => {
 
         queueRegistry[queueKey] = queue;
 
-        winston.info(`Queue created/retrieved: ${queueName}`, {
+        winston.info(`✅ Queue created/retrieved: ${queueName}`, {
             service: 'BullMQ',
             queue: queueName,
         });
@@ -297,7 +297,7 @@ const resumeQueue = async (queueKey) => {
         const queue = createQueue(queueKey);
         await queue.resume();
 
-        winston.info(`Queue resumed: ${queueKey}`, {
+        winston.info(`✅ Queue resumed: ${queueKey}`, {
             service: 'BullMQ',
             queue: queueKey,
         });
@@ -338,7 +338,7 @@ const closeQueue = async (queueKey) => {
             await queue.close();
             delete queueRegistry[queueKey];
 
-            winston.info(`Queue closed: ${queueKey}`, {
+            winston.info(`✅ Queue closed: ${queueKey}`, {
                 service: 'BullMQ',
                 queue: queueKey,
             });
@@ -357,7 +357,7 @@ const closeAllQueues = async () => {
         for (const key of queueKeys) {
             await closeQueue(key);
         }
-        winston.info('All queues closed', { service: 'BullMQ' });
+        winston.info('✅ All queues closed', { service: 'BullMQ' });
     } catch (error) {
         winston.error('❌ Error closing all queues', {
             service: 'BullMQ',

@@ -117,7 +117,7 @@ const safeExtractJson = (text, label = 'JSON') => {
 
     cleaned = cleaned.replace(/[""]/g, '"').replace(/['']/g, "'");
 
-    // FIXED: Complete implementation
+    // ✅ FIXED: Complete implementation
     const extractBalancedObject = (s) => {
         const start = s.indexOf('{');
         if (start === -1) return null;
@@ -630,7 +630,7 @@ function patchScoreInHtml(html, meta) {
 }
 // -------------------- HELPERS --------------------
 function escapeHtml(str) {
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function extractLetterBlock(content) {
@@ -782,6 +782,7 @@ function extractAssessmentMeta(content) {
 }
 // Assessment is everything from EXAMINER FEEDBACK (or legacy SUMMARY) onward.
 // We include the heading so buildAssessmentCards can parse it as a card title.
+
 function getAssessmentOnly(content) {
     const c = String(content || '');
     // Check new heading first, then fall back to legacy SUMMARY
