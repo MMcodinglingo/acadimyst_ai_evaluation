@@ -1,4 +1,3 @@
-const oetWritingEvaluationService = require('../services/oetWritingvaluation.service');
 const oetSpeakingEvaluationService = require('../services/oetSpeakingEvaluation.service');
 
 const handleOetSpeakingEvaluation = async (req, res, next) => {
@@ -32,37 +31,6 @@ const handleOetSpeakingEvaluation = async (req, res, next) => {
     }
 };
 
-const handleOetWritingEvaluation = async (req, res, next) => {
-    try {
-        const { testData, studentWritingAnswer, writingText, student, course } = req.body;
-
-        let resp = await oetWritingEvaluationService.handleOetWritingEvaluation({
-            studentWritingAnswer,
-            student,
-            testData,
-            writingText,
-            course,
-        });
-
-        // REMOVED 'res' from inside .json()
-        return res.status(201).json({
-            success: 1,
-            message: 'OET Writing Evaluation processed successfully.',
-            data: {
-                resp,
-            },
-        });
-    } catch (error) {
-        // Standardized error response
-        return res.status(500).json({
-            success: 0,
-            message: error?.message || 'Something went wrong. Please try again',
-            data: {},
-        });
-    }
-};
-
 module.exports = {
     handleOetSpeakingEvaluation,
-    handleOetWritingEvaluation,
 };

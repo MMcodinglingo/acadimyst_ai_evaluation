@@ -650,9 +650,14 @@ function extractLetterBlock(content) {
     // Remove leading PART 1 heading (supports "—" or ":" variants)
     c = c.replace(/^\*\*PART\s*1[\s\S]*?\*\*\s*/i, '');
 
-    // Cut at SUMMARY (new response has SUMMARY/STRENGTHS/AREAS/FINAL RESULT)
-    const cutAtSummary = c.search(/\*\*SUMMARY\*\*/i);
-    if (cutAtSummary !== -1) c = c.slice(0, cutAtSummary);
+    // Cut at EXAMINER FEEDBACK (new format) or SUMMARY (legacy format)
+    const cutAtFeedback = c.search(/\*\*EXAMINER FEEDBACK\*\*/i);
+    if (cutAtFeedback !== -1) {
+        c = c.slice(0, cutAtFeedback);
+    } else {
+        const cutAtSummary = c.search(/\*\*SUMMARY\*\*/i);
+        if (cutAtSummary !== -1) c = c.slice(0, cutAtSummary);
+    }
 
     // Stop at signature if present
     const endMatch = c.match(/Yours sincerely[\s\S]*?(Doctor)/i);
@@ -775,13 +780,18 @@ function extractAssessmentMeta(content) {
 
     return { totalScore, totalOutOf, result, grade };
 }
-// ✅ Assessment is everything from SUMMARY onward
+// Assessment is everything from EXAMINER FEEDBACK (or legacy SUMMARY) onward.
+// We include the heading so buildAssessmentCards can parse it as a card title.
+
 function getAssessmentOnly(content) {
     const c = String(content || '');
-    const idx = c.search(/\*\*SUMMARY\*\*/i);
-    if (idx !== -1) return c.slice(idx).trim();
+    // Check new heading first, then fall back to legacy SUMMARY
+    const idxFeedback = c.search(/\*\*EXAMINER FEEDBACK\*\*/i);
+    if (idxFeedback !== -1) return c.slice(idxFeedback).trim();
+    const idxSummary = c.search(/\*\*SUMMARY\*\*/i);
+    if (idxSummary !== -1) return c.slice(idxSummary).trim();
 
-    // Fallback: if SUMMARY missing, return anything after PART 1
+    // Fallback: if neither found, return anything after PART 1
     return c.replace(/^\*\*PART\s*1[\s\S]*?\*\*\s*/i, '').trim();
 }
 
